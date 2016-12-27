@@ -6,18 +6,19 @@ class ParseError(BaseException):
     pass
 
 class XmlType:
-    id = None
-    c_name = ""
-    size = 0
-    array_min = 0
-    array_max = 0
-    ref_id = None
-    ref = None
-    is_fundamental = True
-    is_pointer = False
-    is_const = False
-    is_reference = False
-    is_array = False
+    def __init__(self):
+        self.id = None
+        self.c_name = ""
+        self.size = 0
+        self.array_min = 0
+        self.array_max = 0
+        self.ref_id = None
+        self.ref = None
+        self.is_fundamental = True
+        self.is_pointer = False
+        self.is_const = False
+        self.is_reference = False
+        self.is_array = False
 
     def __str__(self):
         return "XmlType(%s)" % self.c_string()
@@ -38,29 +39,72 @@ class XmlType:
 
 
 class XmlStruct:
-    id = None
-    c_name = None
-    fields = []
+    def __init__(self):
+        self.id = None
+        self.c_name = None
+        self.fields = []
 
 
 class XmlField:
-    id = None
-    c_name = None
-    line = 0
-    type = None
-    type_id = None
+    def __init__(self):
+        self.id = None
+        self.c_name = None
+        self.line = 0
+        self.type = None
+        self.type_id = None
+
+
+class XmlArgument:
+    def __init__(self):
+        self.c_name = ""
+        self.type_id = None
+        self.type = None
+
+    def __str__(self):
+        return "Arg(%s %s)" % (self.c_name, self.type)
+    def __repr__(self):
+        return self.__str__()
+
+    def as_argument(self):
+        from .context import Argument
+        a = Argument()
+        a.c_name = self.c_name
+        a.c_type = self.type.c_string()
+        return a
 
 
 class XmlFunction:
-    id = None
-    c_name = ""
-    py_name = ""
-    py_doc = ""
-    line = 0
-    endline = 0
+    def __init__(self):
+        self.id = None
+        self.c_name = ""
+        self.py_name = ""
+        self.py_doc = ""
+        self.line = 0
+        self.endline = 0
+        self.return_type_id = None
+        self.return_type = None
+        self.arguments = []
 
     def __str__(self):
-        return "XmlFunction(%s, %s)" % (self.c_name, self.py_name)
+        return "XmlFunction(%s, %s, %s)" % (self.c_name, self.py_name, str(self.arguments))
+    def __repr__(self):
+        return self.__str__()
+
+    def is_class_function(self):
+        return "." in self.py_name
+
+    def as_function(self):
+        from .context import Function, Argument
+        f = Function()
+        f.c_name = self.c_name
+        f.py_name = self.py_name
+        f.py_doc = self.py_doc
+        f.line = self.line
+        f.endline = self.endline
+        f.c_return_type = self.return_type.c_string()
+        for arg in self.arguments:
+            f.arguments.append(arg.as_argument())
+        return f
 
 
 class XmlParser:
@@ -75,11 +119,19 @@ class XmlParser:
     def parse(self, filename):
         self._parse(filename)
         self._resolve_types()
-        self.dump()
 
     def dump(self):
         print("types", self.types)
         print("functions", self.functions)
+
+    def as_context(self):
+        from .context import Context
+        c = Context()
+        c.filename = self.filename
+        for func in self.functions.values():
+            if not func.is_class_function():
+                c.functions.append(func.as_function())
+        return c
 
     def has_object(self, id):
         return id in self.types or id in self.structs or id in self.functions
@@ -113,13 +165,22 @@ class XmlParser:
                 while not r.c_name:
                     r = r.ref
                 t.c_name = r.c_name
+        # resolve types for function arguments and return-type
+        for key in self.functions:
+            func = self.functions[key]
+            if not self.has_object(func.return_type_id):
+                raise ParseError("Unknown reference type id %s for function return type of %s" % (func.return_type_id, func))
+            func.return_type = self.get_object(func.return_type_id)
+            for arg in func.arguments:
+                if not self.has_object(arg.type_id):
+                    raise ParseError("Unknown reference type id %s for function %s argument" % (arg.ref_id, func))
+                arg.type = self.get_object(arg.type_id)
         # resolve types for struct fields
         for key in self.fields:
             f = self.fields[key]
-            if f.type_id:
-                if not self.has_object(f.type_id):
-                    raise ParseError("Unknown referenced field id %s in %s" % (f.type_id, f))
-                f.type = self.get_object(f.type_id)
+            if not self.has_object(f.type_id):
+                raise ParseError("Unknown referenced field id %s in %s" % (f.type_id, f))
+            f.type = self.get_object(f.type_id)
 
     def _parse(self, filename):
         import subprocess, os
@@ -217,8 +278,19 @@ class XmlParser:
         func.c_name = node.attrib.get("name")
         func.line = int(node.attrib.get("line", 0))
         func.endline = int(node.attrib.get("endline", func.line))
+        func.return_type_id = node.attrib.get("returns")
         func.py_name, func.py_doc = self._get_def(func.line, func.c_name)
+        for child in node:
+            if child.tag == "Argument":
+                self._parse_argument(func, child)
         self.functions.setdefault(func.id, func)
+
+    def _parse_argument(self, func, node):
+        print("-->", func, node)
+        a = XmlArgument()
+        a.c_name = node.attrib.get("name")
+        a.type_id = node.attrib.get("type")
+        func.arguments.append(a)
 
     def _parse_field(self, node):
         field = XmlField()

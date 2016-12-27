@@ -27,9 +27,9 @@ PyObject* vec3_init(PyObject* self, PyObject* arg)
 	return self;
 }
 
-CPY_DEF(vec3.__init2__, The init func)
-PyObject* vec3_init2(PyObject* self, PyObject* arg) {
-	return self;
+CPY_DEF(add_func, Adds two numbers)
+PyObject* add_func(PyObject* args) {
+	return args;
 }
 
 } // extern "C"
