@@ -1,4 +1,4 @@
-####Helper tool for embedding python
+#### LOw-Level Python Interface Generator
 
 Work in progress..
 

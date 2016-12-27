@@ -1,8 +1,8 @@
-import cpy
+import lolpig
 
 
 if __name__ == "__main__":
 
-    p = cpy.Context()
+    p = lolpig.XmlParser()
     p.parse("./test.cpp")
 
