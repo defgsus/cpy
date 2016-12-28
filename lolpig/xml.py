@@ -194,6 +194,7 @@ class XmlParser:
                     if func.py_name and func.py_name.split(".")[0] == cls.py_name:
                         cls.methods.append(func.as_function())
                 c.classes.append(cls)
+        c.finalize()
         return c
 
     def has_object(self, id):

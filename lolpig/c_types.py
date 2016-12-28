@@ -227,20 +227,11 @@ TYPE_FUNCS = [
     ("__eq__",      "tp_richcompare")
 ]
 
-# otherwise PyObject*
-SPECIAL_RETURN_TYPES = {
-    "__init__": "int",
-    "__len__": "Py_ssize_t",
-    "__setitem__": "int",
-}
-SPECIAL_ARGUMENTS = {
-    "__getitem__": ", Py_ssize_t index",
-    "__setitem__": ", Py_ssize_t index, PyObject* arg",
-}
+ALL_FUNCS = TYPE_FUNCS + SEQUENCE_FUNCS + NUMBER_FUNCS
 
 
 FUNCNAME_TO_STRUCT_MEMBER = dict()
-for i in SEQUENCE_FUNCS + NUMBER_FUNCS + TYPE_FUNCS:
+for i in ALL_FUNCS:
     FUNCNAME_TO_STRUCT_MEMBER.setdefault(i[0], i[1])
 
 STRUCT_MEMBER_TO_TYPE = dict()

@@ -4,6 +4,7 @@ python-mod
 build-*/
 *.pro.user
 *.xml
+*.autosave
 test_module.cpp
 test_module.h
 

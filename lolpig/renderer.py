@@ -347,30 +347,6 @@ class Renderer:
             "module_def": self._render_module_def(),
             "module_init": self._render_module_init(),
         })
-
-        #if self.classes:
-        #    for i in self.classes:
-        #        code += "\n\n/* #################### class %s ##################### */\n\n" % i.name
-        #        code += i.render_python_api()
-
-        #if self.functions:
-        #    code += "\n\n/* #################### global functions ##################### */\n\n"
-        #    code += 'extern "C" {\n'
-        #    for i in self.functions:
-        #        code += "\n" + i.render_python_api()
-        #    code += "\n" + self._render_method_struct()
-        #    code += '} // extern "C"\n'
-
-        #if self.context.has_cpp("IMPL"):
-        #    code += "\n" + self.context.format_cpp(self.context.cpp("IMPL")) + "\n"
-
-        #decl = self._render_module_def()
-        #c = self._render_impl_decl()
-        #if c:
-        #    decl += "\n/* ##### c-api wrapper implementation ##### */\n" + c
-        #code += apply_string_dict('\nextern "C" {\n' + INDENT + '%(decl)s\n} // extern "C"\n',
-        #                          { "decl": decl })
-
         return code
 
     def _render_static_asserts(self):
@@ -396,7 +372,6 @@ class Renderer:
     def _render_struct_defs(self):
         code = ""
         for i in self.classes:
-            i.update_names()
             code += "struct %s;\n" % i.class_struct_name
         return code
 
@@ -415,6 +390,7 @@ class Renderer:
     def _render_module_init(self):
         code = """
         namespace {
+
             PyMODINIT_FUNC create_module_%(name)s_func()
             {
                 auto module = PyModule_Create(&%(module_def)s);
@@ -425,6 +401,7 @@ class Renderer:
 
                 return module;
             }
+
         } // namespace
 
         bool initialize_module_%(name)s()
@@ -481,23 +458,32 @@ class Renderer:
         return code
 
     def _render_method_struct_entry(self, func):
-        return '{ "%s", reinterpret_cast<PyCFunction>(%s), METH_NOARGS, "%s" },' % (
-            func.py_name.split(".")[-1],
+        return '{ "%s", reinterpret_cast<PyCFunction>(%s), %s, "%s" },' % (
+            func.py_name_single(),
             func.c_name,
+            func.get_c_method_type(),
             to_c_string(func.py_doc)
         )
 
     def _render_class_def(self, cls):
         """Renders full class definition"""
-        cls.update_names()
+        cls.finalize()
         code = "/* ---- class %s ---- */\n\n" % cls.py_name
 
         code += 'static const char* %s = "%s";\n\n' % (cls.doc_string_name, to_c_string(cls.py_doc))
 
         # general methods
-        if cls.methods:
+        if cls.normal_methods:
             code += "\n\n/* ---- %s methods ---- */\n" % cls.py_name
-            code += self._render_method_struct(cls.method_struct_name, cls.methods)
+            code += self._render_method_struct(cls.method_struct_name, cls.normal_methods)
+
+        # special methods
+        if cls.has_number_method():
+            code += "\n\n/* ---- %s number methods ---- */\n" % cls.py_name
+            code += self._render_class_number_struct(cls)
+        if cls.has_sequence_method():
+            code += "\n\n/* ---- %s sequence methods ---- */\n" % cls.py_name
+            code += self._render_class_sequence_struct(cls)
 
         # init/dealloc
         code += "\n" + self._render_class_init_funcs(cls)
@@ -509,6 +495,22 @@ class Renderer:
         code += "\n" + self._render_class_init_func(cls)
 
         return code + "\n"
+
+    def _render_class_number_struct(self, cls):
+        dic = {}
+        for i in NUMBER_FUNCS:
+            if cls.has_method(i[0]):
+                val = cls.get_method(i[0]).c_name
+                dic.update({i[1]: val})
+        return render_struct("PyNumberMethods", PyNumberMethods, cls.number_struct_name, dic)
+
+    def _render_class_sequence_struct(self, cls):
+        dic = {}
+        for i in SEQUENCE_FUNCS:
+            if cls.has_method(i[0]):
+                val = cls.get_method(i[0]).c_name
+                dic.update({i[1]: val})
+        return render_struct("PySequenceMethods", PySequenceMethods, cls.sequence_struct_name, dic)
 
     def _render_class_type_struct(self, cls):
         dic = {}
@@ -524,17 +526,17 @@ class Renderer:
             "tp_doc": cls.doc_string_name,
             "tp_new": cls.class_new_func_name
         })
-        if cls.methods:
+        if cls.normal_methods:
             dic.update({"tp_methods": cls.method_struct_name})
         #if self.bases:
         #    dic.update({ "tp_base": "&" + self.bases[0].type_struct_name })
-        #for i in TYPE_FUNCS:
-        #    if self.has_function(i[0]):
-        #        dic.update({i[1]: self.get_function(i[0]).func_name})
-        #if self.has_sequence_function():
-        #    dic.update({"tp_as_sequence": "&" + self.sequence_struct_name})
-        #if self.has_number_function():
-        #    dic.update({"tp_as_number": "&" + self.number_struct_name})
+        for i in TYPE_FUNCS:
+            if cls.has_method(i[0]):
+                dic.update({i[1]: cls.get_method(i[0]).c_name})
+        if cls.has_sequence_method():
+            dic.update({"tp_as_sequence": "&" + cls.sequence_struct_name})
+        if cls.has_number_method():
+            dic.update({"tp_as_number": "&" + cls.number_struct_name})
         #if self.properties:
         #    dic.update({"tp_getset": self.getset_struct_name})
 
@@ -573,9 +575,10 @@ class Renderer:
     def _render_class_init_funcs(self, cls):
         code = """
         /** Creates new instance of %(name)s class. */
-        PyObject* %(new_func)s(struct _typeobject *, PyObject *, PyObject *)
+        PyObject* %(new_func)s(struct _typeobject * type, PyObject *, PyObject *)
         {
-            auto o = PyObject_New(%(struct_name)s, &%(type_struct)s);
+            //auto o = PyObject_New(%(struct_name)s, &%(type_struct)s);
+            auto o = PyObject_New(%(struct_name)s, type);
             return reinterpret_cast<PyObject*>(o);
         }
 
