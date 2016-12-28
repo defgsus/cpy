@@ -261,7 +261,7 @@ class Renderer:
 
     @property
     def classes(self):
-        return []#self.context.classes
+        return self.context.classes
 
     @property
     def functions(self):
@@ -285,6 +285,7 @@ class Renderer:
         bool initialize_module_%(name)s();
 
         extern "C" {
+            %(struct_defs)s
             %(func_defs)s
         } // extern "C"
 
@@ -296,6 +297,7 @@ class Renderer:
         code = apply_string_dict(code, {
             "name": self.context.module_name,
             "date": str(datetime.datetime.now()),
+            "struct_defs": self._render_struct_defs(),
             "func_defs": self._render_function_defs(),
             "namespace_open": self._render_namespace_open(),
             "namespace_close": self._render_namespace_close(),
@@ -310,6 +312,11 @@ class Renderer:
         #include <python3.4/Python.h>
         #include <python3.4/structmember.h>
         #include "%(header_name)s"
+
+        #ifndef CPPY_ERROR
+        #   include <iostream>
+        #   define CPPY_ERROR(arg__) { std::cerr << arg__ << std::endl; }
+        #endif
 
         /* compatibility checks */
         %(static_asserts)s
@@ -379,8 +386,18 @@ class Renderer:
 
     def _render_function_defs(self):
         code = ""
-        for i in self.context.functions:
+        for i in self.functions:
             code += "%s;\n" % i.c_definition()
+        for c in self.classes:
+            for i in c.methods:
+                code += "%s;\n" % i.c_definition()
+        return code
+
+    def _render_struct_defs(self):
+        code = ""
+        for i in self.classes:
+            i.update_names()
+            code += "struct %s;\n" % i.class_struct_name
         return code
 
     def _render_namespace_open(self):
@@ -420,9 +437,9 @@ class Renderer:
 
         init_calls = ""
         if self.classes:
-            init_calls += "// add the classes\n"
+            init_calls += "// add classes to module\n"
             for i in self.classes:
-                init_calls += "initialize_class_%s(module);\n" % i.name
+                init_calls += "%s(module);\n" % i.init_func_name
 
         code = apply_string_dict(code, {
             "name": self.context.module_name,
@@ -433,6 +450,7 @@ class Renderer:
         return code
 
     def _render_module_def(self):
+        """Renders classes, methods and global functions"""
         dic = { "name": self.context.module_name,
                 "m_name": '"%s"' % self.context.module_name,
                 "struct_name": self.context.struct_name,
@@ -441,8 +459,13 @@ class Renderer:
                 "m_size": "-1",
                 "doc": to_c_string(self.context.module_doc) }
         code = ""
-        if len(self.functions):
-            code += "/* global functions */\n%s\n" % self._render_method_struct(self.functions)
+        if self.classes:
+            code += "/* ---- classes ---- */\n\n"
+            for c in self.classes:
+                code += self._render_class_def(c)
+        if self.functions:
+            code += "/* ---- global functions ---- */\n%s\n" \
+                    % self._render_method_struct(self.context.method_struct_name, self.functions)
             dic.update({ "m_methods": self.context.method_struct_name})
 
         code += """/* module definition for '%(name)s' */\nstatic const char* %(m_doc)s = "%(doc)s";\n""" % dic
@@ -450,8 +473,8 @@ class Renderer:
                               first_line="PyModuleDef_HEAD_INIT,")
         return code
 
-    def _render_method_struct(self, functions):
-        code = "static PyMethodDef %s[] =\n{\n" % self.context.method_struct_name
+    def _render_method_struct(self, struct_name, functions):
+        code = "static PyMethodDef %s[] =\n{\n" % struct_name
         for i in functions:
             code += INDENT + self._render_method_struct_entry(i) + "\n"
         code += "\n" + INDENT + "{ NULL, NULL, 0, NULL }\n};\n"
@@ -459,8 +482,114 @@ class Renderer:
 
     def _render_method_struct_entry(self, func):
         return '{ "%s", reinterpret_cast<PyCFunction>(%s), METH_NOARGS, "%s" },' % (
-            func.py_name,
+            func.py_name.split(".")[-1],
             func.c_name,
             to_c_string(func.py_doc)
         )
 
+    def _render_class_def(self, cls):
+        """Renders full class definition"""
+        cls.update_names()
+        code = "/* ---- class %s ---- */\n\n" % cls.py_name
+
+        code += 'static const char* %s = "%s";\n\n' % (cls.doc_string_name, to_c_string(cls.py_doc))
+
+        # general methods
+        if cls.methods:
+            code += "\n\n/* ---- %s methods ---- */\n" % cls.py_name
+            code += self._render_method_struct(cls.method_struct_name, cls.methods)
+
+        # init/dealloc
+        code += "\n" + self._render_class_init_funcs(cls)
+
+        # c-api type struct
+        code += "\n" + self._render_class_type_struct(cls)
+
+        # class->module init func
+        code += "\n" + self._render_class_init_func(cls)
+
+        return code + "\n"
+
+    def _render_class_type_struct(self, cls):
+        dic = {}
+        for i in PyTypeObject:
+            dic[i[0]] = "NULL"
+        dic.update({
+            "tp_name": '"%s.%s"' % (self.context.module_name, cls.py_name),
+            "tp_basicsize": str(cls.struct_size),
+            "tp_dealloc": cls.class_dealloc_func_name,
+            "tp_getattro": "PyObject_GenericGetAttr",
+            "tp_setattro": "PyObject_GenericSetAttr",
+            "tp_flags": "Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE",
+            "tp_doc": cls.doc_string_name,
+            "tp_new": cls.class_new_func_name
+        })
+        if cls.methods:
+            dic.update({"tp_methods": cls.method_struct_name})
+        #if self.bases:
+        #    dic.update({ "tp_base": "&" + self.bases[0].type_struct_name })
+        #for i in TYPE_FUNCS:
+        #    if self.has_function(i[0]):
+        #        dic.update({i[1]: self.get_function(i[0]).func_name})
+        #if self.has_sequence_function():
+        #    dic.update({"tp_as_sequence": "&" + self.sequence_struct_name})
+        #if self.has_number_function():
+        #    dic.update({"tp_as_number": "&" + self.number_struct_name})
+        #if self.properties:
+        #    dic.update({"tp_getset": self.getset_struct_name})
+
+        return "/* https://docs.python.org/3/c-api/typeobj.html */\n" + \
+                render_struct("PyTypeObject", PyTypeObject,
+                             cls.type_struct_name, dic,
+                             first_line="PyVarObject_HEAD_INIT(NULL, 0)")
+
+    def _render_class_init_func(self, cls):
+        code = """
+        bool %(func_name)s(PyObject* module)
+        {
+            if (0 != PyType_Ready(&%(struct_name)s))
+            {
+                CPPY_ERROR("Failed to readify class %(name)s for Python module");
+                return false;
+            }
+
+            PyObject* object = reinterpret_cast<PyObject*>(&%(struct_name)s);
+            Py_INCREF(object);
+            if (0 != PyModule_AddObject(module, "%(name)s", object))
+            {
+                Py_DECREF(object);
+                CPPY_ERROR("Failed to add class %(name)s to Python module");
+                return false;
+            }
+            return true;
+        }
+        """ % {
+            "name": cls.py_name,
+            "func_name": cls.init_func_name,
+            "struct_name": cls.type_struct_name
+        }
+        return change_text_indent(code, 0)
+
+    def _render_class_init_funcs(self, cls):
+        code = """
+        /** Creates new instance of %(name)s class. */
+        PyObject* %(new_func)s(struct _typeobject *, PyObject *, PyObject *)
+        {
+            auto o = PyObject_New(%(struct_name)s, &%(type_struct)s);
+            return reinterpret_cast<PyObject*>(o);
+        }
+
+        /** Deletes a %(name)s instance */
+        void %(dealloc_func)s(PyObject* self)
+        {
+            self->ob_type->tp_free(self);
+        }
+        """
+        code %= {
+            "name": cls.py_name,
+            "struct_name": cls.class_struct_name,
+            "type_struct": cls.type_struct_name,
+            "new_func": cls.class_new_func_name,
+            "dealloc_func": cls.class_dealloc_func_name,
+        }
+        return change_text_indent(code, 0)

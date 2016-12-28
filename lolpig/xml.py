@@ -75,10 +75,21 @@ class XmlStruct(XmlContext):
         self.c_name = None
         self.py_name = None
         self.py_doc = None
+        self.size = 0
         self.fields = []
 
     def c_string(self):
         return self.c_name
+
+    def as_class(self):
+        from .context import Class
+        c = Class()
+        c.py_name = self.py_name
+        c.py_doc = self.py_doc
+        c.c_name = self.c_name
+        c.line = self.line
+        c.struct_size = self.size
+        return c
 
 
 class XmlField(XmlContext):
@@ -176,6 +187,13 @@ class XmlParser:
         for func in self.functions.values():
             if func.py_name and not func.is_class_function():
                 c.functions.append(func.as_function())
+        for struct in self.structs.values():
+            if struct.py_name:
+                cls = struct.as_class()
+                for func in self.functions.values():
+                    if func.py_name and func.py_name.split(".")[0] == cls.py_name:
+                        cls.methods.append(func.as_function())
+                c.classes.append(cls)
         return c
 
     def has_object(self, id):
@@ -206,7 +224,7 @@ class XmlParser:
                 if not self.has_object(t.ref_id):
                     raise ParseError("Unknown reference type id %s in %s" % (t.ref_id, t))
                 t.ref = self.get_object(t.ref_id)
-                
+
         # fill c_name field for all types
         for t in self.types.values():
             if t.ref_id and not t.c_name:
@@ -254,7 +272,6 @@ class XmlParser:
                     func.py_name, func.py_doc = self._get_def(func.line, func.c_name)
                 except ParseError:
                     continue
-
 
     def _parse(self, filename):
         import subprocess, os
@@ -376,6 +393,7 @@ class XmlParser:
         s = XmlStruct()
         self._parse_context(node, s)
         s.c_name = node.attrib.get("name")
+        s.size = int(node.attrib.get("size", 0))
         self.structs.setdefault(s.id, s)
 
     def _parse_function(self, node):
@@ -410,6 +428,9 @@ class XmlParser:
             raise ParseError("line number %d out of range" % line)
 
         endline = line-1
+        if self.lines[endline].strip() == "{":
+            endline -= 1
+
         while "LOLPIG_DEF(" not in self.lines[line]:
             line -= 1
             if line <= 0:
@@ -430,15 +451,15 @@ class XmlParser:
         # by making sure that only whitespace follows after end of macro
         docpos = match.span()[1]
         endpos = len(txt)-1
-        num_brack = 0
+        num_brack = 1
         for i in range(docpos, len(txt)):
             if txt[i] == "(":
                 num_brack += 1
             elif txt[i] == ")":
                 num_brack -= 1
-                if num_brack == 0:
-                    endpos = i
-                    break
+            if num_brack == 0:
+                endpos = i
+                break
         from .renderer import is_whitespace
         for i in range(endpos, len(txt)):
             if not (is_whitespace(txt[i]) or txt[i] == ")"):

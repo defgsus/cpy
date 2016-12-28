@@ -10,9 +10,16 @@
 extern "C" {
 
 LOLPIG_DEF(vec3, The vector class)
-struct Vector3
-{
+struct Vector3 {
+    PyObject_HEAD
     double v[3];
+};
+
+LOLPIG_DEF(vec4, The vector class)
+struct Vector4
+{
+    PyObject_HEAD
+    double v[4];
 };
 
 
@@ -26,6 +33,13 @@ PyObject* vec3_init(PyObject* self, PyObject* arg)
 {
 	return self;
 }
+
+LOLPIG_DEF( vec3.copy, Makes a copy)
+PyObject* vec3_copy(PyObject* self)
+{
+    return PyFloat_FromDouble(5.);
+}
+
 
 LOLPIG_DEF(add_func, Adds two numbers)
 PyObject* add_func(PyObject* args) {
