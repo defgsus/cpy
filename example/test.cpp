@@ -1,11 +1,9 @@
 #include <python3.4/Python.h>
 
 #define LOLPIG_DEF(name, doc)
-//__attribute((gccxml("cpy")))
-//struct PyObject;
 
-//namespace MO {
-//namespace PYTHON {
+namespace MO {
+namespace PYTHON {
 
 extern "C" {
 
@@ -15,13 +13,16 @@ struct Vector3 {
     double v[3];
 };
 
+Vector3* new_Vector3();
+bool is_Vector3(PyObject*);
+
+
 LOLPIG_DEF(vec4, The vector class)
 struct Vector4
 {
     PyObject_HEAD
     double v[4];
 };
-
 
 LOLPIG_DEF( vec3.__init__,
     the docstring
@@ -37,7 +38,11 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* kwargs)
 LOLPIG_DEF( vec3.copy, Makes a copy)
 PyObject* vec3_copy(PyObject* self)
 {
-    return PyFloat_FromDouble(5.);
+    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Vector3* nvec = new_Vector3();
+    for (int i=0; i<3; ++i)
+        nvec->v[i] = vec->v[i];
+    return reinterpret_cast<PyObject*>(nvec);
 }
 
 LOLPIG_DEF( vec3.__getitem__, )
@@ -61,7 +66,8 @@ LOLPIG_DEF(func23, Returns 23.)
 PyObject* func23() { return PyFloat_FromDouble(23.); }
 
 LOLPIG_DEF(add,( Some comment, with comma ))
-PyObject* add_func(PyObject* args) {
+PyObject* add_func(PyObject* args)
+{
     double a, b;
     if (!PyArg_ParseTuple(args, "dd", &a, &b))
         return NULL;
@@ -70,5 +76,5 @@ PyObject* add_func(PyObject* args) {
 
 } // extern "C"
 	
-//}
-//}
+} // namespace PYTHON
+} // namespace MO

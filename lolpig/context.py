@@ -79,6 +79,9 @@ class Function:
         # determine type from signature
         selfargs = tuple(self.c_arguments())
         if self.c_return_type == "PyObject*":
+            # make sure that we get "unaryfunc", "binaryfunc" and "ternaryfunc"
+            # for the common signatures instead of a random (by hash) entry
+            # from the FUNCTIONS dict
             if selfargs == ("PyObject*",):
                 return "unaryfunc"
             if selfargs == ("PyObject*", "PyObject*"):
@@ -125,8 +128,8 @@ class Function:
             ))
         for i, a in enumerate(args[1]):
             if not self.arguments[i].c_type == a:
-                raise TypeError("Function %s has wrong argument %s at #%d, expected %s" % (
-                    self.c_name, self.arguments[i].c_type, i, a
+                raise TypeError("Function %s has wrong argument #%d %s, expected %s" % (
+                    self.c_name, i+1, self.arguments[i].c_type, a
                 ))
 
 
@@ -160,6 +163,8 @@ class Class:
         self.class_dealloc_func_name = "destroy_%s" % self.c_name
         self.init_func_name = "initialize_class_%s" % self.py_name
         self.doc_string_name = "%s_doc_string" % self.c_name
+        self.user_new_func = "new_%s" % self.c_name
+        self.user_is_func = "is_%s" % self.c_name
 
     def _update_methods(self):
         self.normal_methods = []

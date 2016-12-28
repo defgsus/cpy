@@ -491,6 +491,9 @@ class Renderer:
         # c-api type struct
         code += "\n" + self._render_class_type_struct(cls)
 
+        # user-helper
+        code += "\n" + self._render_class_user_funcs(cls)
+
         # class->module init func
         code += "\n" + self._render_class_init_func(cls)
 
@@ -574,15 +577,13 @@ class Renderer:
 
     def _render_class_init_funcs(self, cls):
         code = """
-        /** Creates new instance of %(name)s class. */
+        /* Creates new instance of %(name)s class. */
         PyObject* %(new_func)s(struct _typeobject * type, PyObject *, PyObject *)
         {
-            //auto o = PyObject_New(%(struct_name)s, &%(type_struct)s);
-            auto o = PyObject_New(%(struct_name)s, type);
-            return reinterpret_cast<PyObject*>(o);
+            return PyObject_New(PyObject, type);
         }
 
-        /** Deletes a %(name)s instance */
+        /* Deletes a %(name)s instance */
         void %(dealloc_func)s(PyObject* self)
         {
             self->ob_type->tp_free(self);
@@ -594,5 +595,18 @@ class Renderer:
             "type_struct": cls.type_struct_name,
             "new_func": cls.class_new_func_name,
             "dealloc_func": cls.class_dealloc_func_name,
+        }
+        return change_text_indent(code, 0)
+
+    def _render_class_user_funcs(self, cls):
+        code = """
+        /* user helper functions */
+        %(struct)s* %(new_func)s() { return PyObject_NEW(%(struct)s, &%(type_struct)s); }
+        bool %(is_func)s(PyObject* obj) { return PyObject_TypeCheck(obj, &%(type_struct)s); }
+        """ % {
+            "struct": cls.class_struct_name,
+            "type_struct": cls.type_struct_name,
+            "new_func": cls.user_new_func,
+            "is_func": cls.user_is_func,
         }
         return change_text_indent(code, 0)
