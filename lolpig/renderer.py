@@ -309,15 +309,7 @@ class Renderer:
 
         #include <python3.4/Python.h>
         #include <python3.4/structmember.h>
-
-        #ifndef CPPY_ERROR
-        #   include <iostream>
-        #   define CPPY_ERROR(arg__) { std::cerr << arg__ << std::endl; }
-        #endif
-
-        #ifndef CPPY_UNUSED
-        #   define CPPY_UNUSED(arg__) (void)arg__
-        #endif
+        #include "%(header_name)s"
 
         /* compatibility checks */
         %(static_asserts)s
@@ -326,7 +318,10 @@ class Renderer:
 
         /* the python c-api tango */
 
-        %(module_def)s
+        extern "C" {
+
+            %(module_def)s
+        } // extern "C"
 
         %(module_init)s
 
@@ -338,6 +333,7 @@ class Renderer:
         code = apply_string_dict(code, {
             "date": str(datetime.datetime.now()),
             "module_name": self.context.module_name,
+            "header_name": self.context.header_name,
             "static_asserts" : self._render_static_asserts(),
             "namespace_open": self._render_namespace_open(),
             "namespace_close": self._render_namespace_close(),
@@ -444,17 +440,27 @@ class Renderer:
                 "m_methods" : "nullptr",
                 "m_size": "-1",
                 "doc": to_c_string(self.context.module_doc) }
+        code = ""
         if len(self.functions):
-            dic.update({ "m_methods": "static_cast<PyMethodDef*>(%s)" % self.context.method_struct_name})
+            code += "/* global functions */\n%s\n" % self._render_method_struct(self.functions)
+            dic.update({ "m_methods": self.context.method_struct_name})
 
-        code = """/* module definition for '%(name)s' */\nstatic const char* %(m_doc)s = "%(doc)s";\n""" % dic
+        code += """/* module definition for '%(name)s' */\nstatic const char* %(m_doc)s = "%(doc)s";\n""" % dic
         code += render_struct("PyModuleDef", PyModuleDef, dic["struct_name"], dic,
                               first_line="PyModuleDef_HEAD_INIT,")
         return code
 
-    def _render_method_struct(self):
+    def _render_method_struct(self, functions):
         code = "static PyMethodDef %s[] =\n{\n" % self.context.method_struct_name
-        for i in self.functions:
-            code += INDENT + i.render_member_struct_entry()
+        for i in functions:
+            code += INDENT + self._render_method_struct_entry(i) + "\n"
         code += "\n" + INDENT + "{ NULL, NULL, 0, NULL }\n};\n"
         return code
+
+    def _render_method_struct_entry(self, func):
+        return '{ "%s", reinterpret_cast<PyCFunction>(%s), METH_NOARGS, "%s" },' % (
+            func.py_name,
+            func.c_name,
+            to_c_string(func.py_doc)
+        )
+

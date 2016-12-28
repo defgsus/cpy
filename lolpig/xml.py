@@ -5,10 +5,37 @@ GCC-XML parser
 class ParseError(BaseException):
     pass
 
-class XmlType:
+class XmlFile:
     def __init__(self):
         self.id = None
-        self.c_name = ""
+        self.name = None
+
+class XmlContext:
+    def __init__(self):
+        self.id = None
+        self.context_id = None
+        self.context = None
+        self.file_id = None
+        self.line = 0
+        self.end_line = 0
+
+
+class XmlNamespace(XmlContext):
+    def __init__(self):
+        super().__init__()
+        self.c_name = None
+
+    def __str__(self):
+        return "XmlNamespace(%s)" % self.c_name
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class XmlType(XmlContext):
+    def __init__(self):
+        super().__init__()
+        self.c_name = None
         self.size = 0
         self.array_min = 0
         self.array_max = 0
@@ -19,6 +46,10 @@ class XmlType:
         self.is_const = False
         self.is_reference = False
         self.is_array = False
+        self.is_function = False
+        self.is_union = False
+        self.is_typedef = False
+        self.is_enum = False
 
     def __str__(self):
         return "XmlType(%s)" % self.c_string()
@@ -38,30 +69,35 @@ class XmlType:
         return s
 
 
-class XmlStruct:
+class XmlStruct(XmlContext):
     def __init__(self):
-        self.id = None
+        super().__init__()
         self.c_name = None
+        self.py_name = None
+        self.py_doc = None
         self.fields = []
 
+    def c_string(self):
+        return self.c_name
 
-class XmlField:
+
+class XmlField(XmlContext):
     def __init__(self):
-        self.id = None
+        super().__init__()
         self.c_name = None
-        self.line = 0
         self.type = None
         self.type_id = None
 
 
 class XmlArgument:
     def __init__(self):
-        self.c_name = ""
+        self.c_name = None
         self.type_id = None
         self.type = None
 
     def __str__(self):
         return "Arg(%s %s)" % (self.c_name, self.type)
+
     def __repr__(self):
         return self.__str__()
 
@@ -73,20 +109,19 @@ class XmlArgument:
         return a
 
 
-class XmlFunction:
+class XmlFunction(XmlContext):
     def __init__(self):
-        self.id = None
-        self.c_name = ""
-        self.py_name = ""
-        self.py_doc = ""
-        self.line = 0
-        self.endline = 0
+        super().__init__()
+        self.c_name = None
+        self.py_name = None
+        self.py_doc = None
         self.return_type_id = None
         self.return_type = None
         self.arguments = []
 
     def __str__(self):
         return "XmlFunction(%s, %s, %s)" % (self.c_name, self.py_name, str(self.arguments))
+
     def __repr__(self):
         return self.__str__()
 
@@ -100,7 +135,7 @@ class XmlFunction:
         f.py_name = self.py_name
         f.py_doc = self.py_doc
         f.line = self.line
-        f.endline = self.endline
+        f.end_line = self.end_line
         f.c_return_type = self.return_type.c_string()
         for arg in self.arguments:
             f.arguments.append(arg.as_argument())
@@ -115,12 +150,22 @@ class XmlParser:
         self.structs = dict()
         self.functions = dict()
         self.fields = dict()
+        self.namespaces = dict()
+        self.files = dict()
 
     def parse(self, filename):
         self._parse(filename)
         self._resolve_types()
+        self._resolve_context(self.namespaces.values())
+        self._resolve_context(self.functions.values())
+        self._resolve_context(self.types.values())
+        self._resolve_context(self.structs.values())
+        self._resolve_context(self.fields.values())
+        self._find_lolpig_def(self.functions.values())
+        self._find_lolpig_def(self.structs.values())
 
     def dump(self):
+        print("namespaces", self.namespaces)
         print("types", self.types)
         print("functions", self.functions)
 
@@ -129,12 +174,15 @@ class XmlParser:
         c = Context()
         c.filename = self.filename
         for func in self.functions.values():
-            if not func.is_class_function():
+            if func.py_name and not func.is_class_function():
                 c.functions.append(func.as_function())
         return c
 
     def has_object(self, id):
-        return id in self.types or id in self.structs or id in self.functions
+        return id in self.types \
+            or id in self.structs \
+            or id in self.functions \
+            or id in self.namespaces
 
     def get_object(self, id, default = None):
         if id in self.types:
@@ -143,6 +191,8 @@ class XmlParser:
             return self.structs[id]
         if id in self.functions:
             return self.functions[id]
+        if id in self.namespaces:
+            return self.namespaces[id]
         return default
 
     def pos_str(self, line):
@@ -150,37 +200,61 @@ class XmlParser:
 
     def _resolve_types(self):
         # resolve referenced types
-        for key in self.types:
-            t = self.types[key]
+        for t in self.types.values():
             if t.ref_id:
                 t.is_fundamental = False
                 if not self.has_object(t.ref_id):
                     raise ParseError("Unknown reference type id %s in %s" % (t.ref_id, t))
                 t.ref = self.get_object(t.ref_id)
+                
         # fill c_name field for all types
-        for key in self.types:
-            t = self.types[key]
-            if not t.c_name:
+        for t in self.types.values():
+            if t.ref_id and not t.c_name:
                 r = t.ref
-                while not r.c_name:
+                if not r:
+                    continue
+                while not r.c_name and hasattr(r, "ref"):
+                    if not r.ref:
+                        break
                     r = r.ref
                 t.c_name = r.c_name
+
         # resolve types for function arguments and return-type
-        for key in self.functions:
-            func = self.functions[key]
+        for func in self.functions.values():
             if not self.has_object(func.return_type_id):
-                raise ParseError("Unknown reference type id %s for function return type of %s" % (func.return_type_id, func))
+                raise ParseError("Unknown reference type id %s for "
+                                 "function return type of %s" % (func.return_type_id, func))
             func.return_type = self.get_object(func.return_type_id)
             for arg in func.arguments:
                 if not self.has_object(arg.type_id):
                     raise ParseError("Unknown reference type id %s for function %s argument" % (arg.ref_id, func))
                 arg.type = self.get_object(arg.type_id)
+
         # resolve types for struct fields
-        for key in self.fields:
-            f = self.fields[key]
+        for f in self.fields.values():
             if not self.has_object(f.type_id):
                 raise ParseError("Unknown referenced field id %s in %s" % (f.type_id, f))
             f.type = self.get_object(f.type_id)
+
+    def _resolve_context(self, iter):
+        for i in iter:
+            if i.file_id:
+                if not i.file_id in self.files:
+                    raise ParseError("Unknown file id %s in object %s" % (i.file_id, i))
+                i.file = self.files[i.file_id]
+            if i.context_id:
+                if not self.has_object(i.context_id):
+                    raise ParseError("Unknown context id %s in object %s" % (i.context_id, i))
+                i.context = self.get_object(i.context_id)
+
+    def _find_lolpig_def(self, iter):
+        for func in iter:
+            if func.file and func.file.name == self.filename:
+                try:
+                    func.py_name, func.py_doc = self._get_def(func.line, func.c_name)
+                except ParseError:
+                    continue
+
 
     def _parse(self, filename):
         import subprocess, os
@@ -201,8 +275,12 @@ class XmlParser:
     def _parse_xml(self, root):
 
         for child in root:
-            print(child.tag)
-            if child.tag == "Function":
+            #print(child.tag)
+            if child.tag == "Namespace":
+                self._parse_namespace(child)
+            elif child.tag == "File":
+                self._parse_file(child)
+            elif child.tag == "Function":
                 self._parse_function(child)
             elif child.tag == "FundamentalType":
                 self._parse_fundamental_type(child)
@@ -214,79 +292,103 @@ class XmlParser:
                 self._parse_array_type(child)
             elif child.tag == "CvQualifiedType":
                 self._parse_cv_type(child)
+            elif child.tag == "FunctionType":
+                self._parse_function_type(child)
+            elif child.tag == "Union":
+                self._parse_union_type(child)
+            elif child.tag == "Typedef":
+                self._parse_typedef(child)
+            elif child.tag == "Enumeration":
+                self._parse_enum(child)
             elif child.tag == "Struct":
                 self._parse_struct(child)
             elif child.tag == "Field":
                 self._parse_field(child)
 
-    def _parse_fundamental_type(self, node):
-        t = XmlType()
+    def _parse_context(self, node, ctx):
+        ctx.id = node.attrib.get("id", None)
+        ctx.line = int(node.attrib.get("line", 0))
+        ctx.end_line = int(node.attrib.get("endline", ctx.line))
+        ctx.context_id = node.attrib.get("context", None)
+        ctx.file_id = node.attrib.get("file", None)
+
+    def _parse_file(self, node):
+        t = XmlFile()
         t.id = node.attrib.get("id")
+        t.name = node.attrib.get("name")
+        self.files.setdefault(t.id, t)
+
+    def _parse_namespace(self, node):
+        t = XmlNamespace()
+        self._parse_context(node, t)
+        t.c_name = node.attrib.get("name")
+        self.namespaces.setdefault(t.id, t)
+
+    def _parse_any_type(self, node):
+        t = XmlType()
+        self._parse_context(node, t)
         t.c_name = node.attrib.get("name")
         t.size = int(node.attrib.get("size", 0))
+        t.ref_id = node.attrib.get("type", None)
         self.types.setdefault(t.id, t)
+        return t
+
+    def _parse_fundamental_type(self, node):
+        self._parse_any_type(node)
 
     def _parse_pointer_type(self, node):
-        t = XmlType()
-        t.id = node.attrib.get("id")
-        t.ref_id = node.attrib.get("type")
-        t.size = int(node.attrib.get("size", 0))
+        t = self._parse_any_type(node)
         t.is_pointer = True
-        self.types.setdefault(t.id, t)
 
     def _parse_reference_type(self, node):
-        t = XmlType()
-        t.id = node.attrib.get("id")
-        t.ref_id = node.attrib.get("type")
-        t.size = int(node.attrib.get("size", 0))
+        t = self._parse_any_type(node)
         t.is_reference = True
-        self.types.setdefault(t.id, t)
 
     def _parse_array_type(self, node):
-        t = XmlType()
-        t.id = node.attrib.get("id")
-        t.ref_id = node.attrib.get("type")
-        t.size = int(node.attrib.get("size", 0))
-        t.array_min = int(node.attrib.get("min", "0").replace("u", ""))
-        t.array_max = int(node.attrib.get("max", "0").replace("u", ""))
+        t = self._parse_any_type(node)
+        s = node.attrib.get("min", "0").replace("u", "")
+        t.array_min = int(s) if s else 0
+        s = node.attrib.get("max", "0").replace("u", "")
+        t.array_max = int(s) if s else 0
         t.is_array = True
-        self.types.setdefault(t.id, t)
 
     def _parse_cv_type(self, node):
-        t = XmlType()
-        t.id = node.attrib.get("id")
-        t.ref_id = node.attrib.get("type")
-        t.size = int(node.attrib.get("size", 0))
+        t = self._parse_any_type(node)
         t.is_const = True
-        self.types.setdefault(t.id, t)
+
+    def _parse_function_type(self, node):
+        t = self._parse_any_type(node)
+        t.is_function = True
+
+    def _parse_union_type(self, node):
+        t = self._parse_any_type(node)
+        t.is_union = True
+
+    def _parse_typedef(self, node):
+        t = self._parse_any_type(node)
+        t.is_typedef = True
+
+    def _parse_enum(self, node):
+        t = self._parse_any_type(node)
+        t.is_enum = True
 
     def _parse_struct(self, node):
         s = XmlStruct()
-        s.id = node.attrib.get("id")
+        self._parse_context(node, s)
         s.c_name = node.attrib.get("name")
-        s.line = node.attrib.get("line")
         self.structs.setdefault(s.id, s)
 
     def _parse_function(self, node):
-        if not "attributes" in node.attrib:
-            return
-        if "gccxml(cpy)" not in node.attrib["attributes"]:
-            return
-
         func = XmlFunction()
-        func.id = node.attrib.get("id")
+        self._parse_context(node, func)
         func.c_name = node.attrib.get("name")
-        func.line = int(node.attrib.get("line", 0))
-        func.endline = int(node.attrib.get("endline", func.line))
         func.return_type_id = node.attrib.get("returns")
-        func.py_name, func.py_doc = self._get_def(func.line, func.c_name)
         for child in node:
             if child.tag == "Argument":
                 self._parse_argument(func, child)
         self.functions.setdefault(func.id, func)
 
     def _parse_argument(self, func, node):
-        print("-->", func, node)
         a = XmlArgument()
         a.c_name = node.attrib.get("name")
         a.type_id = node.attrib.get("type")
@@ -294,34 +396,54 @@ class XmlParser:
 
     def _parse_field(self, node):
         field = XmlField()
-        field.id = node.attrib.get("id")
-        field.line = int(node.attrib.get("line", 0))
+        self._parse_context(node, field)
         field.type_id = node.attrib.get("type")
         self.fields.setdefault(field.id, field)
 
     def _get_def(self, line, name):
         """
-        Returns python name and doc-string from the CPY_DEF macro.
+        Returns python name and doc-string from the LOLPIG_DEF macro.
         line expected to point at the beginning of the function/struct body
         :return: tuple
         """
         if line < 1 or line >= len(self.lines):
             raise ParseError("line number %d out of range" % line)
+
         endline = line-1
-        while "CPY_DEF(" not in self.lines[line]:
+        while "LOLPIG_DEF(" not in self.lines[line]:
             line -= 1
             if line <= 0:
-                raise ParseError("CPY_DEF not found for %s" % name)
+                raise ParseError("LOLPIG_DEF not found for %s" % name)
         txt = ""
         for i in range(line, endline):
             txt += self.lines[i] + "\n"
+
         import re
         match = None
-        for i in re.finditer(r"CPY_DEF\([\s]*([A-Za-z0-9_\.]*)[\w]*,", txt):
+        for i in re.finditer(r"LOLPIG_DEF\([\s]*([A-Za-z0-9_\.]*)[\w]*,", txt):
             match = i
             break
         if not match or not match.groups():
-            raise ParseError("Can not detect python name in CPY_DEF for %s in %s" % (name, self.pos_str(line)))
+            raise ParseError("Can not detect python name in LOLPIG_DEF for %s in %s" % (name, self.pos_str(line)))
+
+        # see if this DEF actually belongs to the object
+        # by making sure that only whitespace follows after end of macro
+        docpos = match.span()[1]
+        endpos = len(txt)-1
+        num_brack = 0
+        for i in range(docpos, len(txt)):
+            if txt[i] == "(":
+                num_brack += 1
+            elif txt[i] == ")":
+                num_brack -= 1
+                if num_brack == 0:
+                    endpos = i
+                    break
+        from .renderer import is_whitespace
+        for i in range(endpos, len(txt)):
+            if not (is_whitespace(txt[i]) or txt[i] == ")"):
+                raise ParseError("LOLPIG_DEF not found for %s" % name)
+
         py_name = match.groups()[0]
         py_doc = txt[match.span()[1]:].strip()
         if py_doc.endswith(")"):

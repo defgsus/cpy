@@ -4,6 +4,8 @@ python-mod
 build-*/
 *.pro.user
 *.xml
+test_module.cpp
+test_module.h
 
 # intellij/pycharm
 .idea/
