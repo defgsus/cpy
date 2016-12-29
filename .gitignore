@@ -5,8 +5,8 @@ build-*/
 *.pro.user
 *.xml
 *.autosave
-test_module.cpp
-test_module.h
+*_module.cpp
+*_module.h
 
 # intellij/pycharm
 .idea/
