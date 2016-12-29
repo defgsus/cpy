@@ -297,8 +297,8 @@ class Renderer:
         code = apply_string_dict(code, {
             "name": self.context.module_name,
             "date": str(datetime.datetime.now()),
-            "struct_defs": self._render_struct_defs(),
-            "func_defs": self._render_function_defs(),
+            "struct_defs": self._render_struct_decl(),
+            "func_defs": self._render_function_decl(),
             "namespace_open": self._render_namespace_open(),
             "namespace_close": self._render_namespace_close(),
         })
@@ -360,19 +360,54 @@ class Renderer:
             code += 'static_assert(std::is_same<%s,\n    %s>::value, "lolpig/python api mismatch");\n' % (functype, typedef)
         return code
 
-    def _render_function_defs(self):
-        code = ""
-        for i in self.functions:
-            code += "%s;\n" % i.c_definition()
+    def _render_function_decl(self):
+        # get all functions
+        funcs = list(self.functions)
         for c in self.classes:
             for i in c.methods:
-                code += "%s;\n" % i.c_definition()
+                funcs.append(i)
+        # sort by namespaces
+        dic = dict()
+        for i in funcs:
+            n = i.get_namespace_prefix()
+            if not n in dic:
+                dic.setdefault(n, [i])
+            else:
+                dic[n].append(i)
+        code = ""
+        for i in dic.values():
+            if i[0].has_namespace():
+                code += i[0].render_namespace_open()
+                for j in i:
+                    code += INDENT + "%s;\n" % j.c_definition()
+                code += i[0].render_namespace_close()
+            else:
+                for j in i:
+                    code += "%s;\n" % j.c_definition()
         return code
 
-    def _render_struct_defs(self):
-        code = ""
+    def _render_struct_decl(self):
+        # sort by namespaces
+        dic = dict()
         for i in self.classes:
-            code += "struct %s;\n" % i.class_struct_name
+            n = i.get_namespace_prefix()
+            if not n in dic:
+                dic.setdefault(n, [i])
+            else:
+                dic[n].append(i)
+        code = ""
+        # render into namespace bins
+        for i in dic.values():
+            if i[0].has_namespace():
+                code += i[0].render_namespace_open()
+                for j in i:
+                    code += INDENT + "struct %s;\n" % j.class_struct_name
+                code += i[0].render_namespace_close()
+            else:
+                for j in i:
+                    code += "struct %s;\n" % j.class_struct_name
+        if code:
+            code = "/* class struct forwards */\n" + code
         return code
 
     def _render_namespace_open(self):
@@ -460,7 +495,7 @@ class Renderer:
     def _render_method_struct_entry(self, func):
         return '{ "%s", reinterpret_cast<PyCFunction>(%s), %s, "%s" },' % (
             func.py_name_single(),
-            func.c_name,
+            func.full_c_name,
             func.get_c_method_type(),
             to_c_string(func.py_doc)
         )
@@ -505,7 +540,7 @@ class Renderer:
         dic = {}
         for i in NUMBER_FUNCS:
             if cls.has_method(i[0]):
-                val = cls.get_method(i[0]).c_name
+                val = cls.get_method(i[0]).full_c_name
                 dic.update({i[1]: val})
         return render_struct("PyNumberMethods", PyNumberMethods, cls.number_struct_name, dic)
 
@@ -513,7 +548,7 @@ class Renderer:
         dic = {}
         for i in SEQUENCE_FUNCS:
             if cls.has_method(i[0]):
-                val = cls.get_method(i[0]).c_name
+                val = cls.get_method(i[0]).full_c_name
                 dic.update({i[1]: val})
         return render_struct("PySequenceMethods", PySequenceMethods, cls.sequence_struct_name, dic)
 
@@ -537,7 +572,7 @@ class Renderer:
             dic.update({ "tp_base": "&" + cls.bases[0].type_struct_name })
         for i in TYPE_FUNCS:
             if cls.has_method(i[0]):
-                dic.update({i[1]: cls.get_method(i[0]).c_name})
+                dic.update({i[1]: cls.get_method(i[0]).full_c_name})
         if cls.has_sequence_method():
             dic.update({"tp_as_sequence": "&" + cls.sequence_struct_name})
         if cls.has_number_method():
@@ -610,7 +645,7 @@ class Renderer:
         %(struct)s* %(new_func)s() { return PyObject_NEW(%(struct)s, &%(type_struct)s); }
         bool %(is_func)s(PyObject* obj) { return PyObject_TypeCheck(obj, &%(type_struct)s); }
         """ % {
-            "struct": cls.class_struct_name,
+            "struct": cls.get_namespace_prefix() + cls.class_struct_name,
             "type_struct": cls.type_struct_name,
             "new_func": cls.user_new_func,
             "is_func": cls.user_is_func,

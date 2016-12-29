@@ -10,12 +10,17 @@
 
 #define PRINT(arg__) std::cout << arg__ << std::endl;
 
+    LOLPIG_DEF(some, )
+    struct Some {
+        PyObject_HEAD
+    };
+
 namespace MO {
 namespace PYTHON {
 
 extern "C" {
 
-    LOLPIG_DEF(vec_base, The basic vector class)
+    LOLPIG_DEF(vec, The basic vector class)
     struct VectorBase {
         PyObject_HEAD
         double* v;

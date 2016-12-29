@@ -9,9 +9,16 @@
 #ifndef PY_UTILS_H
 #define PY_UTILS_H
 
+#if !defined(GCC_XML) && !defined(CPP11)
+#   define CPP11
+#endif
+
+
 #include <string>
 #include <sstream>
-#include <functional>
+#ifdef CPP11
+#   include <functional>
+#endif
 
 #include <python3.4/Python.h>
 #include <python3.4/structmember.h>
@@ -95,10 +102,12 @@ void setPythonError(PyObject* exc, const std::string& txt);
 
 std::string typeName(const PyObject* arg);
 
+#ifdef CPP11
 /** Iterates over every item in the PySequence. If seq is not sequencable,
     sets PyErr and returns false. If foo returns false, the iteration is stopped
     and false is returned. */
 bool iterateSequence(PyObject* seq, std::function<bool(PyObject*item)> foo);
+#endif
 
 /** Verify that index < len, raise IndexError otherwise */
 bool checkIndex(Py_ssize_t index, Py_ssize_t len);
@@ -120,6 +129,7 @@ public:
 };
 
 
+#ifndef GCC_XML
 
 // #################### template impl. #####################
 
@@ -243,7 +253,7 @@ PyObject* toList(const T* vec, size_t num)
     return o;
 }
 
-
+#endif // GCC_XML
 
 
 } // namespace PyUtils

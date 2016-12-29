@@ -4,8 +4,32 @@ class Namespaced:
     def __init__(self):
         self.namespaces = []
 
-    def get_namespace(self):
-        return "::".join(self.namespaces)
+    def has_namespace(self):
+        return len(self.namespaces) > 1 or not self.namespaces == ["::"]
+
+    def get_namespace_prefix(self):
+        n = []
+        for i in reversed(self.namespaces):
+            if not i == "::":
+                n.append(i)
+        return "::".join(n) + "::" if n else "::"
+
+    def render_namespace_open(self):
+        code = ""
+        if self.has_namespace():
+            for i in reversed(self.namespaces):
+                if not i == "::":
+                    code += "namespace %s {\n" % i
+        return code
+
+    def render_namespace_close(self):
+        code = ""
+        if self.has_namespace():
+            for i in reversed(self.namespaces):
+                if not i == "::":
+                    code += "} // namespace %s\n" % i
+        return code
+
 
 
 class Argument:
@@ -16,7 +40,7 @@ class Argument:
 
 class Function(Namespaced):
     def __init__(self):
-        super(Function, self).__init__(self)
+        super(Function, self).__init__()
         self.c_name = ""
         self.py_name = ""
         self.py_doc = ""
@@ -25,6 +49,10 @@ class Function(Namespaced):
         self.c_return_type = ""
         self.arguments = []
         self.namespaces = []
+
+    @property
+    def full_c_name(self):
+        return self.get_namespace_prefix() + self.c_name
 
     def c_arguments(self):
         """Returns the arguments list as list of c_type strings"""
@@ -145,7 +173,7 @@ class Function(Namespaced):
 
 class Class(Namespaced):
     def __init__(self):
-        super(Class, self).__init__(self)
+        super(Class, self).__init__()
         self.c_name = ""
         self.py_name = ""
         self.py_doc = ""
@@ -231,10 +259,10 @@ class Context:
     def dump(self):
         print("FUNCTIONS:")
         for f in self.functions:
-            print("  " + f.get_namespace() + f.c_definition() + " " + str(f.get_function_type()))
+            print("  " + f.get_namespace_prefix() + f.c_definition() + " " + str(f.get_function_type()))
         print("CLASSES:")
         for c in self.classes:
-            print(c.py_name + " -> ".join([""]+[x.py_name for x in c.bases]))
+            print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases]))
             for f in c.methods:
                 print("    ." + f.py_name + " " + str(f.get_function_type()))
 
@@ -243,6 +271,10 @@ class Context:
             f.verify()
         for c in self.classes:
             c.finalize()
+        for c in self.classes:
+            c.methods.sort(key=lambda f: f.c_name)
+        self.functions.sort(key=lambda f: f.c_name)
+        self.classes.sort(key=lambda c: c.c_name)
         self._sort_classes_by_bases()
 
     def _sort_classes_by_bases(self):

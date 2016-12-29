@@ -323,8 +323,9 @@ class XmlParser:
 
         xmlname = filename + "_temp_.xml"
         subprocess.call(["gccxml", filename,
-                         "--gccxml-cxxflags", "-std=c++11",
-                         "--gccxml-executable", "g++",
+                         "--gccxml-cxxflags", "-DGCC_XML",
+                         #"--gccxml-cxxflags", "-std=c++11",
+                         #"--gccxml-executable", "g++",
                          "-fxml=%s" % xmlname])
 
         import xml.etree.ElementTree as ET

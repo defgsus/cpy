@@ -3,11 +3,13 @@
 namespace MO {
 namespace PYTHON {
 
+using namespace PyUtils;
+
 extern "C" {
 
 
-LOLPIG_DEF( vec_base.__new__, )
-PyObject* vec_base_new(struct _typeobject* type, PyObject* args, PyObject* )
+LOLPIG_DEF( vec.__new__, )
+PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
 {
     VectorBase* vec = PyObject_NEW(VectorBase, type);
     vec->len = 3;
@@ -23,8 +25,8 @@ PyObject* vec_base_new(struct _typeobject* type, PyObject* args, PyObject* )
 }
 
 /*
-LOLPIG_DEF( vec_base.__init__, )
-int vec_base_init(PyObject* self, PyObject* args, PyObject* )
+LOLPIG_DEF( vec.__init__, )
+int vec_init(PyObject* self, PyObject* args, PyObject* )
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     PRINT("INIT " << vec->len);
@@ -33,8 +35,8 @@ int vec_base_init(PyObject* self, PyObject* args, PyObject* )
     return 0;
 }*/
 
-LOLPIG_DEF( vec_base.__dealloc__, )
-void vec_base_free(PyObject* self)
+LOLPIG_DEF( vec.__dealloc__, )
+void vec_free(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     //PRINT("DEALLOC " << vec->v);
@@ -43,12 +45,12 @@ void vec_base_free(PyObject* self)
     self->ob_type->tp_free(self);
 }
 
-LOLPIG_DEF( vec_base.__repr__, )
-PyObject* vec_base_repr(PyObject* self)
+LOLPIG_DEF( vec.__repr__, )
+PyObject* vec_repr(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     std::stringstream s;
-    s << "vec_base(";
+    s << "vec(";
     for (int i=0; i<vec->len; ++i)
         s << vec->v[i] << ", ";
     s << ") " << self->ob_refcnt;
@@ -57,26 +59,35 @@ PyObject* vec_base_repr(PyObject* self)
 
 
 
-LOLPIG_DEF( vec_base.__getitem__, )
-PyObject* vec_base_getitem(PyObject* self, Py_ssize_t idx)
+LOLPIG_DEF( vec.__getitem__, )
+PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    return PyFloat_FromDouble(vec->v[idx]);
+    return toPython(vec->v[idx]);
 }
 
-LOLPIG_DEF( vec_base.__setitem__, )
-int vec_base_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
+LOLPIG_DEF( vec.__setitem__, )
+int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    vec->v[idx] = PyFloat_AsDouble(val);
+    if (!fromPython(val, &vec->v[idx]))
+        return -1;
     return 0;
 }
 
-LOLPIG_DEF( vec_base.__len__, )
-Py_ssize_t vec_base_len(PyObject* self)
+LOLPIG_DEF( vec.__len__, )
+Py_ssize_t vec_len(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     return vec->len;
+}
+
+LOLPIG_DEF( vec.test, )
+PyObject* vec_test(PyObject* self, PyObject* args)
+{
+    PRINT("SEQ " << PySequence_Check(args)
+          << " LEN " << PySequence_Size(args) );
+    Py_RETURN_NONE;
 }
 
 /*
