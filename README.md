@@ -52,7 +52,9 @@ bool is_Vector3(PyObject*);
 LOLPIG_DEF(vec3.__init__, Initialize the vector)
 int vec3_init(PyObject* self, PyObject* args, PyObject* kwargs)
 {
-    // do something meaningful..
+    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    if (!PyArg_ParseTuple(args, "ddd", &vec->v[0], &vec->v[1], &vec->v[2]))
+        return -1;
 	return 0;
 }
 

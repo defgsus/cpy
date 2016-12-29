@@ -76,6 +76,9 @@ class Function:
             for i in ALL_FUNCS:
                 if n == i[0]:
                     return STRUCT_MEMBER_TO_TYPE[i[1]]
+            for i in SPECIAL_FUNCS:
+                if n == i[0]:
+                    return i[1]
         # determine type from signature
         selfargs = tuple(self.c_arguments())
         if self.c_return_type == "PyObject*":

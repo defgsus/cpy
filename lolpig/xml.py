@@ -32,6 +32,12 @@ class XmlNamespace(XmlContext):
         return self.__str__()
 
 
+class XmlClass(XmlContext):
+    def __init__(self):
+        super().__init__()
+        self.c_name = None
+
+
 class XmlType(XmlContext):
     def __init__(self):
         super().__init__()
@@ -163,6 +169,7 @@ class XmlParser:
         self.fields = dict()
         self.namespaces = dict()
         self.files = dict()
+        self.classes = dict()
 
     def parse(self, filename):
         self._parse(filename)
@@ -201,7 +208,8 @@ class XmlParser:
         return id in self.types \
             or id in self.structs \
             or id in self.functions \
-            or id in self.namespaces
+            or id in self.namespaces \
+            or id in self.classes
 
     def get_object(self, id, default = None):
         if id in self.types:
@@ -212,6 +220,8 @@ class XmlParser:
             return self.functions[id]
         if id in self.namespaces:
             return self.namespaces[id]
+        if id in self.classes:
+            return self.classes[id]
         return default
 
     def pos_str(self, line):
@@ -322,6 +332,8 @@ class XmlParser:
                 self._parse_struct(child)
             elif child.tag == "Field":
                 self._parse_field(child)
+            elif child.tag == "Class":
+                self._parse_class(child)
 
     def _parse_context(self, node, ctx):
         ctx.id = node.attrib.get("id", None)
@@ -418,6 +430,12 @@ class XmlParser:
         self._parse_context(node, field)
         field.type_id = node.attrib.get("type")
         self.fields.setdefault(field.id, field)
+
+    def _parse_class(self, node):
+        c = XmlClass()
+        self._parse_context(node, c)
+        c.c_name = node.attrib.get("name")
+        self.classes.setdefault(c.id, c)
 
     def _get_def(self, line, name):
         """

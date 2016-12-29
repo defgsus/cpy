@@ -170,15 +170,15 @@ PyModuleDef = [
 
 SEQUENCE_FUNCS = [
     ("__len__",         "sq_length"),
-    ("__???__",         "sq_concat"),
-    ("__???__",         "sq_repeat"),
+    ("__concat__",      "sq_concat"),
+    ("__repeat__",      "sq_repeat"),
     ("__getitem__",     "sq_item"),
-    ("__???___",        "was_sq_slice"),
+    ("__???__",         "was_sq_slice"),
     ("__setitem__",     "sq_ass_item"),
-    ("__???___",        "was_sq_ass_slice"),
+    ("__???__",         "was_sq_ass_slice"),
     ("__contains__",    "sq_contains"),
-    ("__???___",        "sq_inplace_concat"),
-    ("__???___",        "sq_inplace_repeat"),
+    ("__iconcat__",     "sq_inplace_concat"),
+    ("__irepeat__",     "sq_inplace_repeat"),
 ]
 
 NUMBER_FUNCS = [
@@ -186,28 +186,28 @@ NUMBER_FUNCS = [
     ("__sub__",         "nb_subtract"),
     ("__mul__",         "nb_multiply"),
     ("__mod__",         "nb_remainder"),
-    ("__???__",         "nb_divmod"),
+    ("__divmod__",      "nb_divmod"),
     ("__pow__",         "nb_power"),
     ("__neg__",         "nb_negative"),
     ("__pos__",         "nb_positive"),
     ("__abs__",         "nb_absolute"),
     ("__bool__",        "nb_bool"),
-    ("__???__",         "nb_invert"),
-    ("__???__",         "nb_lshift"),
-    ("__???__",         "nb_rshift"),
+    ("__invert__",      "nb_invert"),
+    ("__lshift__",      "nb_lshift"),
+    ("__rshift__",      "nb_rshift"),
     ("__and__",         "nb_and"),
     ("__xor__",         "nb_xor"),
     ("__or__",          "nb_or"),
-    ("__???__",         "nb_int"),
-    ("__???__",         "nb_reserved"),
-    ("__???__",         "nb_float"),
+    ("__int__",         "nb_int"),
+    # ("__???__",         "nb_reserved"),
+    ("__float__",       "nb_float"),
     ("__iadd__",        "nb_inplace_add"),
     ("__isub__",        "nb_inplace_subtract"),
     ("__imul__",        "nb_inplace_multiply"),
     ("__imod__",        "nb_inplace_remainder"),
     ("__ipow__",        "nb_inplace_power"),
-    ("__???__",         "nb_inplace_lshift"),
-    ("__???__",         "nb_inplace_rshift"),
+    ("__ilshift__",     "nb_inplace_lshift"),
+    ("__irshift__",     "nb_inplace_rshift"),
     ("__iand__",        "nb_inplace_and"),
     ("__ixor__",        "nb_inplace_xor"),
     ("__ior__",         "nb_inplace_or"),
@@ -215,19 +215,40 @@ NUMBER_FUNCS = [
     ("__truediv__",     "nb_true_divide"),
     ("__ifloordiv__",   "nb_inplace_floor_divide"),
     ("__itruediv__",    "nb_inplace_true_divide"),
-    ("__???__",         "nb_index"),
+    ("__index__",       "nb_index"),
 ]
 
-
+# https://docs.python.org/3/reference/datamodel.html#basic-customization
+# https://docs.python.org/3/c-api/typeobj.html#type-objects
 TYPE_FUNCS = [
-    ("__str__",     "tp_str"),
-    ("__unicode__", "tp_str"),
-    ("__repr__",    "tp_repr"),
-    ("__init__",    "tp_init"),
-    ("__eq__",      "tp_richcompare")
+    ("__new__",         "tp_new"),
+    ("__init__",        "tp_init"),
+    ("__del__",         "tp_del"),
+    ("__str__",         "tp_str"),
+    ("__unicode__",     "tp_str"),
+    ("__repr__",        "tp_repr"),
+    ("__lt__",          "tp_richcompare"),
+    ("__le__",          "tp_richcompare"),
+    ("__eq__",          "tp_richcompare"),
+    ("__ne__",          "tp_richcompare"),
+    ("__gt__",          "tp_richcompare"),
+    ("__ge__",          "tp_richcompare"),
+    ("__hash__",        "tp_hash"),
+    ("__getattr__",     "tp_getattr"),
+    ("__setattr__",     "tp_setattr"),
+    ("__call__",        "tp_call"),
+    ("__iter__",        "tp_iter"),
+    ("__next__",        "tp_iternext"),
 ]
 
 ALL_FUNCS = TYPE_FUNCS + SEQUENCE_FUNCS + NUMBER_FUNCS
+
+
+SPECIAL_FUNCS = [
+    ("__floor__",       "unaryfunc"),
+    ("__cleil__",       "unaryfunc"),
+    ("__complex__",     "unaryfunc"),
+]
 
 
 FUNCNAME_TO_STRUCT_MEMBER = dict()

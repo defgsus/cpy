@@ -480,9 +480,11 @@ class Renderer:
         # special methods
         if cls.has_number_method():
             code += "\n\n/* ---- %s number methods ---- */\n" % cls.py_name
+            code += "/* https://docs.python.org/3/c-api/typeobj.html#number-object-structures */\n"
             code += self._render_class_number_struct(cls)
         if cls.has_sequence_method():
             code += "\n\n/* ---- %s sequence methods ---- */\n" % cls.py_name
+            code += "/* https://docs.python.org/3/c-api/typeobj.html#sequence-object-structures */\n"
             code += self._render_class_sequence_struct(cls)
 
         # init/dealloc
