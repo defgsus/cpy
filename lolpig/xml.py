@@ -9,6 +9,9 @@ class XmlFile:
     def __init__(self):
         self.id = None
         self.name = None
+        self.content = None
+        self.lines = None
+        self.do_scan = True
 
 class XmlContext:
     def __init__(self):
@@ -18,6 +21,14 @@ class XmlContext:
         self.file_id = None
         self.line = 0
         self.end_line = 0
+
+    def get_namespace_list(self):
+        n = []
+        if self.context:
+            if hasattr(self.context, "c_name"):
+                n.append(self.context.c_name)
+            n += self.context.get_namespace_list()
+        return n
 
 
 class XmlNamespace(XmlContext):
@@ -83,6 +94,8 @@ class XmlStruct(XmlContext):
         self.py_doc = None
         self.size = 0
         self.fields = []
+        self.bases_id = []
+        self.bases = []
 
     def c_string(self):
         return self.c_name
@@ -95,6 +108,7 @@ class XmlStruct(XmlContext):
         c.c_name = self.c_name
         c.line = self.line
         c.struct_size = self.size
+        c.namespaces = self.get_namespace_list()
         return c
 
 
@@ -153,6 +167,7 @@ class XmlFunction(XmlContext):
         f.py_doc = self.py_doc
         f.line = self.line
         f.end_line = self.end_line
+        f.namespaces = self.get_namespace_list()
         f.c_return_type = self.return_type.c_string()
         for arg in self.arguments:
             f.arguments.append(arg.as_argument())
@@ -161,8 +176,7 @@ class XmlFunction(XmlContext):
 
 class XmlParser:
     def __init__(self):
-        self.filename = ""
-        self.lines = []
+        self.filenames = []
         self.types = dict()
         self.structs = dict()
         self.functions = dict()
@@ -171,8 +185,9 @@ class XmlParser:
         self.files = dict()
         self.classes = dict()
 
-    def parse(self, filename):
-        self._parse(filename)
+    def parse(self, filenames):
+        for f in filenames:
+            self._parse(f)
         self._resolve_types()
         self._resolve_context(self.namespaces.values())
         self._resolve_context(self.functions.values())
@@ -190,7 +205,7 @@ class XmlParser:
     def as_context(self):
         from .context import Context
         c = Context()
-        c.filename = self.filename
+        c.filenames = self.filenames
         for func in self.functions.values():
             if func.py_name and not func.is_class_function():
                 c.functions.append(func.as_function())
@@ -201,6 +216,14 @@ class XmlParser:
                     if func.py_name and func.py_name.split(".")[0] == cls.py_name:
                         cls.methods.append(func.as_function())
                 c.classes.append(cls)
+        # resolve bases
+        for xmlstruct in self.structs.values():
+            struct = c.get_object_by_c_name(xmlstruct.c_name)
+            if struct:
+                for b in xmlstruct.bases:
+                    base = c.get_object_by_c_name(b.c_name)
+                    if base:
+                        struct.bases.append(base)
         c.finalize()
         return c
 
@@ -265,6 +288,16 @@ class XmlParser:
                 raise ParseError("Unknown referenced field id %s in %s" % (f.type_id, f))
             f.type = self.get_object(f.type_id)
 
+        # resolve struct bases
+        for s in self.structs.values():
+            if s.bases_id:
+                s.bases = []
+                for b in s.bases_id:
+                    if not self.has_object(b):
+                        raise ParseError("Unknown struct base reference %s in struct %s" % (b, s))
+                    s.bases.append(self.get_object(b))
+
+
     def _resolve_context(self, iter):
         for i in iter:
             if i.file_id:
@@ -277,28 +310,29 @@ class XmlParser:
                 i.context = self.get_object(i.context_id)
 
     def _find_lolpig_def(self, iter):
-        for func in iter:
-            if func.file and func.file.name == self.filename:
+        for obj in iter:
+            if obj.file:# and func.file.name == self.filename:
                 try:
-                    func.py_name, func.py_doc = self._get_def(func.line, func.c_name)
+                    obj.py_name, obj.py_doc = self._get_def(obj.file, obj.line, obj.c_name)
                 except ParseError:
                     continue
 
     def _parse(self, filename):
+        """Generate gcc-xml and parse it"""
         import subprocess, os
 
         xmlname = filename + "_temp_.xml"
-        subprocess.call(["gccxml", filename, "-fxml=%s" % xmlname])
-
-        with open(filename) as f:
-            self.lines = f.read().split("\n")
+        subprocess.call(["gccxml", filename,
+                         "--gccxml-cxxflags", "-std=c++11",
+                         "--gccxml-executable", "g++",
+                         "-fxml=%s" % xmlname])
 
         import xml.etree.ElementTree as ET
         tree = ET.parse(xmlname)
         self._parse_xml(tree.getroot())
-        # os.remove(xmlname)
+        os.remove(xmlname)
 
-        self.filename = filename
+        self.filenames.append(filename)
 
     def _parse_xml(self, root):
 
@@ -407,6 +441,7 @@ class XmlParser:
         self._parse_context(node, s)
         s.c_name = node.attrib.get("name")
         s.size = int(node.attrib.get("size", 0))
+        s.bases_id = node.attrib.get("bases", "").split()
         self.structs.setdefault(s.id, s)
 
     def _parse_function(self, node):
@@ -437,34 +472,49 @@ class XmlParser:
         c.c_name = node.attrib.get("name")
         self.classes.setdefault(c.id, c)
 
-    def _get_def(self, line, name):
+    def _get_def(self, file, line, name):
         """
         Returns python name and doc-string from the LOLPIG_DEF macro.
         line expected to point at the beginning of the function/struct body
         :return: tuple
         """
-        if line < 1 or line >= len(self.lines):
+        if file.do_scan:
+            file.do_scan = False
+            if file.name.startswith("<") or file.name.startswith("/"):
+                return None, None
+            with open(file.name) as f:
+                file.content = f.read()
+            if not "LOLPIG_DEF" in file.content:
+                file.content = None
+            else:
+                file.lines = file.content.split("\n")
+
+        if not file.content:
+            return None, None
+        if line < 1 or line >= len(file.lines):
             raise ParseError("line number %d out of range" % line)
 
         endline = line-1
-        if self.lines[endline].strip() == "{":
+        if file.lines[endline].strip() == "{":
             endline -= 1
 
-        while "LOLPIG_DEF(" not in self.lines[line]:
+        # find next DEF before given line
+        while "LOLPIG_DEF(" not in file.lines[line]:
             line -= 1
             if line <= 0:
-                raise ParseError("LOLPIG_DEF not found for %s" % name)
+                return None, None
         txt = ""
         for i in range(line, endline):
-            txt += self.lines[i] + "\n"
+            txt += file.lines[i] + "\n"
 
+        # scan first part of DEF for proper syntax
         import re
         match = None
         for i in re.finditer(r"LOLPIG_DEF\([\s]*([A-Za-z0-9_\.]*)[\w]*,", txt):
             match = i
             break
         if not match or not match.groups():
-            raise ParseError("Can not detect python name in LOLPIG_DEF for %s in %s" % (name, self.pos_str(line)))
+            return None, None
 
         # see if this DEF actually belongs to the object
         # by making sure that only whitespace follows after end of macro
@@ -482,7 +532,7 @@ class XmlParser:
         from .renderer import is_whitespace
         for i in range(endpos, len(txt)):
             if not (is_whitespace(txt[i]) or txt[i] == ")"):
-                raise ParseError("LOLPIG_DEF not found for %s" % name)
+                return None, None
 
         py_name = match.groups()[0]
         py_doc = txt[match.span()[1]:].strip()

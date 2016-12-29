@@ -533,8 +533,8 @@ class Renderer:
         })
         if cls.normal_methods:
             dic.update({"tp_methods": cls.method_struct_name})
-        #if self.bases:
-        #    dic.update({ "tp_base": "&" + self.bases[0].type_struct_name })
+        if cls.bases:
+            dic.update({ "tp_base": "&" + cls.bases[0].type_struct_name })
         for i in TYPE_FUNCS:
             if cls.has_method(i[0]):
                 dic.update({i[1]: cls.get_method(i[0]).c_name})
@@ -578,19 +578,23 @@ class Renderer:
         return change_text_indent(code, 0)
 
     def _render_class_init_funcs(self, cls):
-        code = """
-        /* Creates new instance of %(name)s class. */
-        PyObject* %(new_func)s(struct _typeobject * type, PyObject *, PyObject *)
-        {
-            return PyObject_New(PyObject, type);
-        }
-
-        /* Deletes a %(name)s instance */
-        void %(dealloc_func)s(PyObject* self)
-        {
-            self->ob_type->tp_free(self);
-        }
-        """
+        code = ""
+        if not cls.has_method("__new__"):
+            code += """
+            /* Creates new instance of %(name)s class. */
+            PyObject* %(new_func)s(struct _typeobject * type, PyObject *, PyObject *)
+            {
+                return PyObject_New(PyObject, type);
+            }
+            """
+        if not cls.has_method("__dealloc__"):
+            code += """
+            /* Deletes a %(name)s instance */
+            void %(dealloc_func)s(PyObject* self)
+            {
+                self->ob_type->tp_free(self);
+            }
+            """
         code %= {
             "name": cls.py_name,
             "struct_name": cls.class_struct_name,

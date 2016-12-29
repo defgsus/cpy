@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cmath>
 
+/*
 #define LOLPIG_DEF(name, doc)
 
 #define PRINT(arg__) std::cout << arg__ << std::endl;
@@ -228,3 +229,4 @@ PyObject* add_func(PyObject* args)
 	
 } // namespace PYTHON
 } // namespace MO
+*/

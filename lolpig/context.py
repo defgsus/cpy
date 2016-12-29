@@ -1,8 +1,12 @@
 from .c_types import *
 
-class Namespace:
+class Namespaced:
     def __init__(self):
-        self.c_name = ""
+        self.namespaces = []
+
+    def get_namespace(self):
+        return "::".join(self.namespaces)
+
 
 class Argument:
     def __init__(self):
@@ -10,8 +14,9 @@ class Argument:
         self.c_type = ""
 
 
-class Function:
+class Function(Namespaced):
     def __init__(self):
+        super(Function, self).__init__(self)
         self.c_name = ""
         self.py_name = ""
         self.py_doc = ""
@@ -19,6 +24,7 @@ class Function:
         self.end_line = 0
         self.c_return_type = ""
         self.arguments = []
+        self.namespaces = []
 
     def c_arguments(self):
         """Returns the arguments list as list of c_type strings"""
@@ -137,8 +143,9 @@ class Function:
 
 
 
-class Class:
+class Class(Namespaced):
     def __init__(self):
+        super(Class, self).__init__(self)
         self.c_name = ""
         self.py_name = ""
         self.py_doc = ""
@@ -146,6 +153,7 @@ class Class:
         self.struct_size = 0
         self.methods = []
         self.normal_methods = []
+        self.bases = []
 
     def finalize(self):
         self._update_names()
@@ -175,6 +183,14 @@ class Class:
             if f.is_normal_function():
                 self.normal_methods.append(f)
 
+    def has_base(self, cls):
+        if cls in self.bases:
+            return True
+        for c in self.bases:
+            if c.has_base(cls):
+                return True
+        return False
+
     def has_method(self, py_name):
         for i in self.methods:
             if i.py_name_single() == py_name:
@@ -203,7 +219,7 @@ class Class:
 
 class Context:
     def __init__(self):
-        self.filename = ""
+        self.filenames = []
         self.module_name = "module"
         self.header_name = "test_module.h"
         self.module_doc = "The module documentation"
@@ -215,15 +231,33 @@ class Context:
     def dump(self):
         print("FUNCTIONS:")
         for f in self.functions:
-            print("  " + f.c_definition() + " " + str(f.get_function_type()))
+            print("  " + f.get_namespace() + f.c_definition() + " " + str(f.get_function_type()))
         print("CLASSES:")
         for c in self.classes:
-            print("  " + c.py_name)
+            print(c.py_name + " -> ".join([""]+[x.py_name for x in c.bases]))
             for f in c.methods:
-                print("    " + f.c_definition() + " " + str(f.get_function_type()))
+                print("    ." + f.py_name + " " + str(f.get_function_type()))
 
     def finalize(self):
         for f in self.functions:
             f.verify()
         for c in self.classes:
             c.finalize()
+        self._sort_classes_by_bases()
+
+    def _sort_classes_by_bases(self):
+        srt = []
+        for c in self.classes:
+            i = 0
+            while i < len(srt):
+                if srt[i].has_base(c):
+                    break
+                i += 1
+            srt.insert(i, c)
+        self.classes = srt
+
+    def get_object_by_c_name(self, c_name):
+        for i in self.functions + self.classes:
+            if i.c_name == c_name:
+                return i
+        return None

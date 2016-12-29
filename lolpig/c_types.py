@@ -32,8 +32,8 @@ FUNCTIONS = {
     "descrgetfunc":         ("PyObject*",   ("PyObject*", "PyObject*", "PyObject*")),
     "descrsetfunc":         ("int",         ("PyObject*", "PyObject*", "PyObject*")),
     "initproc":             ("int",         ("PyObject*", "PyObject*", "PyObject*")),
-    "newfunc":              ("PyObject*",   ("struct _typeobject*", "PyObject*", "PyObject*")),
-    "allocfunc":            ("PyObject*",   ("struct _typeobject*", "Py_ssize_t")),
+    "newfunc":              ("PyObject*",   ("_typeobject*", "PyObject*", "PyObject*")),
+    "allocfunc":            ("PyObject*",   ("_typeobject*", "Py_ssize_t")),
 
     "getter":               ("PyObject*",   ("PyObject*", "void*")),
     "setter":               ("int",         ("PyObject*", "PyObject*", "void*")),
@@ -239,6 +239,9 @@ TYPE_FUNCS = [
     ("__call__",        "tp_call"),
     ("__iter__",        "tp_iter"),
     ("__next__",        "tp_iternext"),
+    # these are unofficial
+    ("__dealloc__",     "tp_dealloc"),
+    ("__finalize__",    "tp_finalize"),
 ]
 
 ALL_FUNCS = TYPE_FUNCS + SEQUENCE_FUNCS + NUMBER_FUNCS
