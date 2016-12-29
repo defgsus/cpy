@@ -92,4 +92,9 @@ the c-api python module. All three files (your own and the two created ones)
 need to be compiled and that's just it :)
 
 
+The current version is a bit broken. lolpig.py hardwires to vector module
+and i just realized that gcc-xml does not support c++11. 
+demotivated for the moment..
+- either must depend on CastXML or directly on LLVM for c++11..
+- or look into Doxygen if it parses enough of the C/C++1x to replace gcc-xml  
 
