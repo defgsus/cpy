@@ -9,26 +9,11 @@ class Namespaced:
 
     def get_namespace_prefix(self):
         n = []
-        for i in reversed(self.namespaces):
+        for i in self.namespaces:
             if not i == "::":
                 n.append(i)
         return "::".join(n) + "::" if n else "::"
 
-    def render_namespace_open(self):
-        code = ""
-        if self.has_namespace():
-            for i in reversed(self.namespaces):
-                if not i == "::":
-                    code += "namespace %s {\n" % i
-        return code
-
-    def render_namespace_close(self):
-        code = ""
-        if self.has_namespace():
-            for i in reversed(self.namespaces):
-                if not i == "::":
-                    code += "} // namespace %s\n" % i
-        return code
 
 
 
@@ -271,7 +256,6 @@ class Context:
             f.verify()
         for c in self.classes:
             c.finalize()
-        for c in self.classes:
             c.methods.sort(key=lambda f: f.c_name)
         self.functions.sort(key=lambda f: f.c_name)
         self.classes.sort(key=lambda c: c.c_name)

@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     }
 
     // append module to inittab
-    initialize_module_vec();
+    MOP::initialize_module_vec();
 
     // run python
     Py_Main(argc, wargs);

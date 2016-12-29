@@ -7,6 +7,16 @@ using namespace PyUtils;
 
 extern "C" {
 
+VectorBase* copy_VectorBase(VectorBase* src)
+{
+    VectorBase* dst = new_VectorBase();
+    dst->v = (double*)malloc(src->len * sizeof(double));
+    dst->len = src->len;
+    for (int i=0; i<src->len; ++i)
+        dst->v[i] = src->v[i];
+    return dst;
+}
+
 
 LOLPIG_DEF( vec.__new__, )
 PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
@@ -44,6 +54,14 @@ void vec_free(PyObject* self)
     vec->v = NULL;
     self->ob_type->tp_free(self);
 }
+
+LOLPIG_DEF( vec.copy, )
+PyObject* vec_copy(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    return reinterpret_cast<PyObject*>(copy_VectorBase(vec));
+}
+
 
 LOLPIG_DEF( vec.__repr__, )
 PyObject* vec_repr(PyObject* self)
@@ -83,7 +101,7 @@ Py_ssize_t vec_len(PyObject* self)
 }
 
 LOLPIG_DEF( vec.test, )
-PyObject* vec_test(PyObject* self, PyObject* args)
+PyObject* vec_test(PyObject* , PyObject* args)
 {
     PRINT("SEQ " << PySequence_Check(args)
           << " LEN " << PySequence_Size(args) );

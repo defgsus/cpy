@@ -27,7 +27,7 @@ class XmlContext:
         if self.context:
             if hasattr(self.context, "c_name"):
                 n.append(self.context.c_name)
-            n += self.context.get_namespace_list()
+            n = self.context.get_namespace_list() + n
         return n
 
 

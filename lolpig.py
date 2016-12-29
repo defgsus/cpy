@@ -14,6 +14,7 @@ if __name__ == "__main__":
     c.dump()
 
     r = lolpig.Renderer(c)
+    r.namespaces = ["MOP"]
     r.write_to_file("./vector/vec_module.h", r.render_hpp())
     r.write_to_file("./vector/vec_module.cpp", r.render_cpp())
 
