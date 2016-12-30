@@ -42,20 +42,11 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* )
 }*/
 
 
-LOLPIG_DEF( vec3.copy, )
-PyObject* vec3_copy(PyObject* self)
-{
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    return reinterpret_cast<PyObject*>(copy_Vector3(vec));
-}
-
 LOLPIG_DEF( vec3.__repr__, )
 PyObject* vec3_repr(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
-    std::stringstream s;
-    s << (void*)vec << ":" << vec->toString("vec3");
-    return toPython(s.str());
+    return toPython(vec->toRepr("vec3"));
 }
 
 LOLPIG_DEF( vec3.__str__, )

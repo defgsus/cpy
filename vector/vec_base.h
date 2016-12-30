@@ -8,12 +8,8 @@
 
 #include "py_utils.h"
 
-#define PRINT(arg__) std::cout << arg__ << std::endl;
+#define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
 
-    LOLPIG_DEF(some, )
-    struct Some {
-        PyObject_HEAD
-    };
 
 namespace MO {
 namespace PYTHON {
@@ -22,6 +18,7 @@ extern "C" {
 
     struct VectorBase;
 
+    /** iterator for vec classes */
     LOLPIG_DEF(_vec_iter, Vector iterator)
     struct VectorIter {
         PyObject_HEAD
@@ -34,7 +31,7 @@ extern "C" {
     VectorIter* new_VectorIter();
     bool is_VectorIter(PyObject*);
 
-
+    /** Base vector class and variable length vector */
     LOLPIG_DEF(vec, The basic vector class)
     struct VectorBase {
         PyObject_HEAD
@@ -43,20 +40,23 @@ extern "C" {
 
         void alloc(int len);
         void dealloc();
+        /** Returns a deep copy of the class (or subclass) */
+        VectorBase* copy() const;
         std::string toString(const std::string& name="vec") const;
+        std::string toRepr(const std::string& name="vec") const;
         static int parseSequence(PyObject* seq, double* v, int max_len);
+        bool inplace_operator(PyObject* right, void(*op)(double& l, double r));
+        static PyObject* copy_operator(PyObject* left, PyObject* right,
+                                       double(*op)(double l, double r));
     };
 
     VectorBase* new_VectorBase();
-    VectorBase* copy_VectorBase(VectorBase*);
     bool is_VectorBase(PyObject*);
-
 
     LOLPIG_DEF(vec3, 3-dimensional vector class)
     struct Vector3 : public VectorBase { };
 
     Vector3* new_Vector3();
-    Vector3* copy_Vector3(Vector3*);
     bool is_Vector3(PyObject*);
 
 
