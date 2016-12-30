@@ -51,7 +51,8 @@ bool fromPython(PyObject* obj, std::string* s)
 {
     if (PyUnicode_Check(obj))
     {
-        *s = PyUnicode_AsUTF8(obj);
+        if (s)
+            *s = PyUnicode_AsUTF8(obj);
         return true;
     }
     return false;
@@ -61,7 +62,8 @@ bool fromPython(PyObject* obj, long* s)
 {
     if (PyLong_Check(obj))
     {
-        *s = PyLong_AsLong(obj);
+        if (s)
+            *s = PyLong_AsLong(obj);
         return true;
     }
     return false;
@@ -71,12 +73,14 @@ bool fromPython(PyObject* obj, double* val)
 {
     if (PyFloat_Check(obj))
     {
-        *val = PyFloat_AsDouble(obj);
+        if (val)
+            *val = PyFloat_AsDouble(obj);
         return true;
     }
     if (PyLong_Check(obj))
     {
-        *val = PyLong_AsLong(obj);
+        if (val)
+            *val = PyLong_AsLong(obj);
         return true;
     }
     return false;

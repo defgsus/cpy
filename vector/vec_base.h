@@ -44,10 +44,12 @@ extern "C" {
         VectorBase* copy() const;
         std::string toString(const std::string& name="vec") const;
         std::string toRepr(const std::string& name="vec") const;
-        static int parseSequence(PyObject* seq, double* v, int max_len);
         bool inplace_operator(PyObject* right, void(*op)(double& l, double r));
         static PyObject* copy_operator(PyObject* left, PyObject* right,
                                        double(*op)(double l, double r));
+
+        static int parseSequence(PyObject* seq, double* v=NULL,
+                                 int max_len=0, int default_len=0);
     };
 
     VectorBase* new_VectorBase();

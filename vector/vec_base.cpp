@@ -1,5 +1,9 @@
 #include "vec_base.h"
 
+#ifdef CPP11
+#   include <limits>
+#endif
+
 namespace MO {
 namespace PYTHON {
 
@@ -11,16 +15,13 @@ extern "C" {
 LOLPIG_DEF( vec.__new__, )
 PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
 {
-    double v[16];
-    int len = VectorBase::parseSequence(args, v, 16);
+    int len = VectorBase::parseSequence(args);
     if (len==0)
         return NULL;
-    //PRINT(typeName(args) << " " << len);
 
     VectorBase* vec = PyObject_NEW(VectorBase, type);
     vec->alloc(len);
-    for (int i=0; i<len; ++i)
-        vec->v[i] = v[i];
+    VectorBase::parseSequence(args, vec->v, 0, 1);
 
     return reinterpret_cast<PyObject*>(vec);
 }
@@ -317,7 +318,7 @@ bool parseSequencePart(PyObject* seq, int* write, int max_len, double* v)
     while (*write < max_len && seq_pos < seq_len)
     {
         PyObject* item = PySequence_GetItem(seq, seq_pos);
-        if (fromPython(item, &v[*write]))
+        if (fromPython(item, v ? &v[*write] : NULL))
         {
             ++(*write);
             ++seq_pos;
@@ -339,14 +340,22 @@ bool parseSequencePart(PyObject* seq, int* write, int max_len, double* v)
 }
 
 
-int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
+int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len)
 {
-    if (isNone(seq))
-    // scalar value fills whole max_len
+    if (def_len==0 && max_len)
+        def_len = max_len;
+    if (max_len==0)
+    {
+#ifdef CPP11
+        max_len = std::numeric_limits<int>::max();
+#endif
+    }
+    // scalar value fills whole def_len
     if (fromPython(seq, v))
     {
-        for (int i=1; i<max_len; ++i)
-            v[i] = v[0];
+        if (v)
+            for (int i=1; i<def_len; ++i)
+                v[i] = v[0];
         return 1;
     }
     if (!PySequence_Check(seq))
@@ -361,8 +370,9 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
         PyObject* item = PySequence_GetItem(seq, 0);
         if (fromPython(item, v))
         {
-            for (int i=1; i<max_len; ++i)
-                v[i] = v[0];
+            if (v)
+                for (int i=1; i<def_len; ++i)
+                    v[i] = v[0];
             return 1;
         }
     }
@@ -371,8 +381,10 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
     if (!parseSequencePart(seq, &write, max_len, v))
         return 0;
 
-    for (int i=write; i<max_len; ++i)
-        v[i] = 0.;
+    // zero rest
+    if (v)
+        for (int i=write; i<def_len; ++i)
+            v[i] = 0.;
 
     return write;
 }
