@@ -4,16 +4,20 @@ import lolpig
 
 if __name__ == "__main__":
 
-    p = lolpig.XmlParser()
-    p.parse(["./vector/vec_base.cpp", "./vector/vec3.cpp"])
-    #p.dump()
+    ctx = lolpig.Context()
 
-    c = p.as_context()
-    c.module_name = "vec"
-    c.header_name = "vec_module.h"
-    c.dump()
+    for fn in ["./vector/vec_base.cpp", "./vector/vec3.cpp"]:
+        p = lolpig.XmlParser()
+        p.parse(fn)
+        #p.dump()
+        ctx.merge(p.as_context())
+    ctx.finalize()
 
-    r = lolpig.Renderer(c)
+    ctx.module_name = "vec"
+    ctx.header_name = "vec_module.h"
+    ctx.dump()
+
+    r = lolpig.Renderer(ctx)
     r.namespaces = ["MOP"]
     r.write_to_file("./vector/vec_module.h", r.render_hpp())
     r.write_to_file("./vector/vec_module.cpp", r.render_cpp())

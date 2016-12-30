@@ -21,11 +21,12 @@ LOLPIG_DEF( vec3.__init__, )
 int vec3_init(PyObject* self, PyObject* args, PyObject* )
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
-    vec->len = Vector3::parseSequence(args, vec->v, 3);
-    if (!vec->len)
+    if (VectorBase::parseSequence(args, vec->v, 3) == 0)
         return -1;
+    vec->len = 3;
     return 0;
 }
+
 
 LOLPIG_DEF( vec3.copy, )
 PyObject* vec3_copy(PyObject* self)
@@ -39,7 +40,7 @@ PyObject* vec3_repr(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
     std::stringstream s;
-    s << vec->toString("vec3") << "@" << (void*)vec;
+    s << (void*)vec << ":" << vec->toString("vec3");
     return toPython(s.str());
 }
 
@@ -49,6 +50,7 @@ PyObject* vec3_str(PyObject* self)
     Vector3* vec = reinterpret_cast<Vector3*>(self);
     return toPython(vec->toString("vec3"));
 }
+
 
 
 } // extern "C"

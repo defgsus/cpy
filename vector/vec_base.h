@@ -36,7 +36,7 @@ extern "C" {
     LOLPIG_DEF(vec, The basic vector class)
     struct VectorBase {
         PyObject_HEAD
-        double v[4];
+        double v[16];
         int len;
 
         std::string toString(const std::string& name="vec") const;

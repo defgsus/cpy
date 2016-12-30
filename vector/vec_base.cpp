@@ -45,7 +45,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
     {
         for (int i=1; i<max_len; ++i)
             v[i] = v[0];
-        return max_len;
+        return 1;
     }
     if (!PySequence_Check(seq))
     {
@@ -61,7 +61,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
         {
             for (int i=1; i<max_len; ++i)
                 v[i] = v[0];
-            return max_len;
+            return 1;
         }
     }
     // parse any float/sequence combination
@@ -72,7 +72,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
     for (int i=write; i<max_len; ++i)
         v[i] = 0.;
 
-    return max_len;
+    return write;
 }
 
 std::string VectorBase::toString(const std::string& name) const
@@ -100,32 +100,43 @@ VectorBase* copy_VectorBase(VectorBase* src)
     return dst;
 }
 
+
 /*
 LOLPIG_DEF( vec.__new__, )
 PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
-{    
-    VectorBase* vec = PyObject_NEW(VectorBase, type);
-    vec->len = VectorBase::parseSequence(args, vec->v, 4);
-    if (vec->len)
-    {
-        Py_DECREF(vec);
+{
+    double v[16];
+    int len = VectorBase::parseSequence(args, v, 16);
+    if (len==0)
         return NULL;
+    //PRINT(typeName(args) << " " << len);
+
+    VectorBase* vec;
+    switch (len)
+    {
+        //case 3: vec = reinterpret_cast<VectorBase*>(new_Vector3());
+        default: vec = PyObject_NEW(VectorBase, type);
     }
+
+    vec->len = len;
+    for (int i=0; i<len; ++i)
+        vec->v[i] = v[i];
+
     return reinterpret_cast<PyObject*>(vec);
 }
 */
 
-/*
+
 LOLPIG_DEF( vec.__init__, )
 int vec_init(PyObject* self, PyObject* args, PyObject* )
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    vec->len = VectorBase::parseSequence(args, vec->v, 4);
-    if (!vec->len)
+    vec->len = VectorBase::parseSequence(args, vec->v, 16);
+    if (vec->len == 0)
         return -1;
     return 0;
 }
-*/
+
 
 /*
 LOLPIG_DEF( vec.__dealloc__, )

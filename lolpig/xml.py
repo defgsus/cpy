@@ -21,6 +21,7 @@ class XmlContext:
         self.file_id = None
         self.line = 0
         self.end_line = 0
+        self.mangled = None
 
     def get_namespace_list(self):
         n = []
@@ -109,6 +110,7 @@ class XmlStruct(XmlContext):
         c.line = self.line
         c.struct_size = self.size
         c.namespaces = self.get_namespace_list()
+        c.mangled = self.mangled
         return c
 
 
@@ -168,6 +170,7 @@ class XmlFunction(XmlContext):
         f.line = self.line
         f.end_line = self.end_line
         f.namespaces = self.get_namespace_list()
+        f.mangled = self.mangled
         f.c_return_type = self.return_type.c_string()
         for arg in self.arguments:
             f.arguments.append(arg.as_argument())
@@ -176,7 +179,7 @@ class XmlFunction(XmlContext):
 
 class XmlParser:
     def __init__(self):
-        self.filenames = []
+        self.filename = ""
         self.types = dict()
         self.structs = dict()
         self.functions = dict()
@@ -185,9 +188,8 @@ class XmlParser:
         self.files = dict()
         self.classes = dict()
 
-    def parse(self, filenames):
-        for f in filenames:
-            self._parse(f)
+    def parse(self, filename, clean_temps=True):
+        self._parse(filename, clean_temps=clean_temps)
         self._resolve_types()
         self._resolve_context(self.namespaces.values())
         self._resolve_context(self.functions.values())
@@ -205,7 +207,7 @@ class XmlParser:
     def as_context(self):
         from .context import Context
         c = Context()
-        c.filenames = self.filenames
+        c.filenames = [self.filename]
         for func in self.functions.values():
             if func.py_name and not func.is_class_function():
                 c.functions.append(func.as_function())
@@ -317,7 +319,7 @@ class XmlParser:
                 except ParseError:
                     continue
 
-    def _parse(self, filename):
+    def _parse(self, filename, clean_temps=True):
         """Generate gcc-xml and parse it"""
         import subprocess, os
 
@@ -331,9 +333,10 @@ class XmlParser:
         import xml.etree.ElementTree as ET
         tree = ET.parse(xmlname)
         self._parse_xml(tree.getroot())
-        os.remove(xmlname)
+        if clean_temps:
+            os.remove(xmlname)
 
-        self.filenames.append(filename)
+        self.filename = filename
 
     def _parse_xml(self, root):
 
@@ -376,6 +379,7 @@ class XmlParser:
         ctx.end_line = int(node.attrib.get("endline", ctx.line))
         ctx.context_id = node.attrib.get("context", None)
         ctx.file_id = node.attrib.get("file", None)
+        ctx.mangled = node.attrib.get("mangled", None)
 
     def _parse_file(self, node):
         t = XmlFile()

@@ -3,6 +3,7 @@ from .c_types import *
 class Namespaced:
     def __init__(self):
         self.namespaces = []
+        self.mangled = None
 
     def has_namespace(self):
         return len(self.namespaces) > 1 or not self.namespaces == ["::"]
@@ -14,6 +15,14 @@ class Namespaced:
                 n.append(i)
         return "::".join(n) + "::" if n else "::"
 
+    def key(self):
+        """unique C identifier"""
+        if self.mangled:
+            return self.mangled
+        k = self.get_namespace_prefix()
+        if hasattr(self, "c_name"):
+            k += self.c_name
+        return k
 
 
 class Argument:
@@ -169,7 +178,7 @@ class Class(Namespaced):
         self.line = 0
         self.struct_size = 0
         self.methods = []
-        self.normal_methods = []
+        self.normal_methods = [] # generated
         self.bases = []
 
     def __hash__(self):
@@ -180,6 +189,11 @@ class Class(Namespaced):
         self._update_methods()
         for f in self.methods:
             f.verify()
+
+    def merge(self, other):
+        for i in other.methods:
+            if not self.has_method(i.c_name):
+                self.methods.append(i)
 
     def _update_names(self):
         self.class_struct_name = self.c_name
@@ -251,12 +265,14 @@ class Context:
     def dump(self):
         print("FUNCTIONS:")
         for f in self.functions:
-            print("  " + f.get_namespace_prefix() + f.c_definition() + " " + str(f.get_function_type()))
+            print("  " + f.get_namespace_prefix() + f.c_definition() + " " + str(f.get_function_type())
+                  + " (" + f.key() + ")")
         print("CLASSES:")
         for c in self.classes:
-            print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases]))
+            print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases])
+                  + " (" + c.key() + ")")
             for f in c.methods:
-                print("    ." + f.py_name + " " + str(f.get_function_type()))
+                print("    " + f.py_name + " " + str(f.get_function_type()) + " (" + f.key() + ")")
 
     def finalize(self):
         for f in self.functions:
@@ -267,6 +283,20 @@ class Context:
         self.functions.sort(key=lambda f: f.c_name)
         self.classes.sort(key=lambda c: c.c_name)
         self._sort_classes_by_bases()
+
+    def merge(self, other):
+        dic = dict()
+        for ns in self.functions + self.classes:
+            dic.setdefault(ns.key(), ns)
+        for i in other.functions:
+            if not i.key() in dic:
+                self.functions.append(i)
+        for i in other.classes:
+            if not i.key() in dic:
+                self.classes.append(i)
+            else:
+                dic[i.key()].merge(i)
+
 
     def _sort_classes_by_bases(self):
         srt = []
