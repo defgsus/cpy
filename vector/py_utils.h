@@ -37,6 +37,8 @@
 
 namespace PyUtils {
 
+bool isNone(PyObject*);
+
 PyObject* toPython(const std::string&);
 PyObject* toPython(const char*);
 PyObject* toPython(double);

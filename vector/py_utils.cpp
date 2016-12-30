@@ -9,6 +9,12 @@
 namespace PyUtils {
 
 
+bool isNone(PyObject* o)
+{
+    return PyObject_TypeCheck(o, Py_TYPE(Py_None));
+}
+
+
 PyObject* toPython(const std::string& s)
 {
     return PyUnicode_FromString(s.data());

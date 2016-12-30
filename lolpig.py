@@ -5,7 +5,7 @@ import lolpig
 if __name__ == "__main__":
 
     p = lolpig.XmlParser()
-    p.parse(["./vector/vec_base.cpp",])
+    p.parse(["./vector/vec_base.cpp", "./vector/vec3.cpp"])
     #p.dump()
 
     c = p.as_context()

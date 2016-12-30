@@ -7,44 +7,127 @@ using namespace PyUtils;
 
 extern "C" {
 
+
+bool parseSequencePart(PyObject* seq, int* write, int max_len, double* v)
+{
+    int seq_len = PySequence_Length(seq);
+    int seq_pos = 0;
+    while (*write < max_len && seq_pos < seq_len)
+    {
+        PyObject* item = PySequence_GetItem(seq, seq_pos);
+        if (fromPython(item, &v[*write]))
+        {
+            ++(*write);
+            ++seq_pos;
+        }
+        else if (PySequence_Check(item))
+        {
+            if (!parseSequencePart(item, write, max_len, v))
+                return false;
+            ++seq_pos;
+        }
+        else
+        {
+            setPythonError(PyExc_TypeError, SStream() << "expected float in sequence, got "
+                           << typeName(item));
+            return false;
+        }
+    }
+    return true;
+}
+
+
+int VectorBase::parseSequence(PyObject* seq, double* v, int max_len)
+{
+    if (isNone(seq))
+    // scalar value fills whole max_len
+    if (fromPython(seq, v))
+    {
+        for (int i=1; i<max_len; ++i)
+            v[i] = v[0];
+        return max_len;
+    }
+    if (!PySequence_Check(seq))
+    {
+        setPythonError(PyExc_TypeError, SStream() << "expected scalar or sequence, got "
+                       << typeName(seq));
+        return 0;
+    }
+    // scalar value again
+    if (PySequence_Length(seq) == 1)
+    {
+        PyObject* item = PySequence_GetItem(seq, 0);
+        if (fromPython(item, v))
+        {
+            for (int i=1; i<max_len; ++i)
+                v[i] = v[0];
+            return max_len;
+        }
+    }
+    // parse any float/sequence combination
+    int write = 0;
+    if (!parseSequencePart(seq, &write, max_len, v))
+        return 0;
+
+    for (int i=write; i<max_len; ++i)
+        v[i] = 0.;
+
+    return max_len;
+}
+
+std::string VectorBase::toString(const std::string& name) const
+{
+    std::stringstream s;
+    s << name << "(";
+    for (int i=0; i<this->len; ++i)
+    {
+        if (i>0)
+             s << ", ";
+        s << this->v[i];
+    }
+    s << ")";
+    return s.str();
+}
+
+
+
 VectorBase* copy_VectorBase(VectorBase* src)
 {
     VectorBase* dst = new_VectorBase();
-    dst->v = (double*)malloc(src->len * sizeof(double));
     dst->len = src->len;
     for (int i=0; i<src->len; ++i)
         dst->v[i] = src->v[i];
     return dst;
 }
 
-
+/*
 LOLPIG_DEF( vec.__new__, )
 PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
-{
+{    
     VectorBase* vec = PyObject_NEW(VectorBase, type);
-    vec->len = 3;
-    //PRINT("NEW " << vec->len);
-    vec->v = (double*)malloc(vec->len * sizeof(double));
-
-    if (!PyArg_ParseTuple(args, "ddd", &vec->v[0], &vec->v[1], &vec->v[2]))
+    vec->len = VectorBase::parseSequence(args, vec->v, 4);
+    if (vec->len)
     {
         Py_DECREF(vec);
         return NULL;
     }
     return reinterpret_cast<PyObject*>(vec);
 }
+*/
 
 /*
 LOLPIG_DEF( vec.__init__, )
 int vec_init(PyObject* self, PyObject* args, PyObject* )
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    PRINT("INIT " << vec->len);
-    if (!PyArg_ParseTuple(args, "ddd", &vec->v[0], &vec->v[1], &vec->v[2]))
+    vec->len = VectorBase::parseSequence(args, vec->v, 4);
+    if (!vec->len)
         return -1;
     return 0;
-}*/
+}
+*/
 
+/*
 LOLPIG_DEF( vec.__dealloc__, )
 void vec_free(PyObject* self)
 {
@@ -54,6 +137,7 @@ void vec_free(PyObject* self)
     vec->v = NULL;
     self->ob_type->tp_free(self);
 }
+*/
 
 LOLPIG_DEF( vec.copy, )
 PyObject* vec_copy(PyObject* self)
@@ -68,11 +152,15 @@ PyObject* vec_repr(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     std::stringstream s;
-    s << "vec(";
-    for (int i=0; i<vec->len; ++i)
-        s << vec->v[i] << ", ";
-    s << ") " << self->ob_refcnt;
-    return PyUnicode_FromString(s.str().c_str());
+    s << vec->toString() << "@" << (void*)vec;
+    return toPython(s.str());
+}
+
+LOLPIG_DEF( vec.__str__, )
+PyObject* vec_str(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    return toPython(vec->toString());
 }
 
 
@@ -101,10 +189,10 @@ Py_ssize_t vec_len(PyObject* self)
 }
 
 LOLPIG_DEF( vec.test, )
-PyObject* vec_test(PyObject* , PyObject* args)
+PyObject* vec_test(PyObject* , PyObject* obj)
 {
-    PRINT("SEQ " << PySequence_Check(args)
-          << " LEN " << PySequence_Size(args) );
+    PRINT("SEQ " << PySequence_Check(obj)
+          << " LEN " << PySequence_Size(obj) );
     Py_RETURN_NONE;
 }
 

@@ -20,16 +20,7 @@ namespace PYTHON {
 
 extern "C" {
 
-    LOLPIG_DEF(vec, The basic vector class)
-    struct VectorBase {
-        PyObject_HEAD
-        double* v;
-        int len;
-    };
-
-    VectorBase* new_VectorBase();
-    bool is_VectorBase(PyObject*);
-
+    struct VectorBase;
 
     LOLPIG_DEF(_vec_iter, Vector iterator)
     struct VectorIter {
@@ -40,6 +31,29 @@ extern "C" {
 
     VectorIter* new_VectorIter();
     bool is_VectorIter(PyObject*);
+
+
+    LOLPIG_DEF(vec, The basic vector class)
+    struct VectorBase {
+        PyObject_HEAD
+        double v[4];
+        int len;
+
+        std::string toString(const std::string& name="vec") const;
+        static int parseSequence(PyObject* seq, double* v, int max_len);
+    };
+
+    VectorBase* new_VectorBase();
+    VectorBase* copy_VectorBase(VectorBase*);
+    bool is_VectorBase(PyObject*);
+
+
+    LOLPIG_DEF(vec3, 3-dimensional vector class)
+    struct Vector3 : public VectorBase { };
+
+    Vector3* new_Vector3();
+    Vector3* copy_Vector3(Vector3*);
+    bool is_Vector3(PyObject*);
 
 
 } // extern "C"

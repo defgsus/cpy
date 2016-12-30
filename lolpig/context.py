@@ -127,10 +127,12 @@ class Function(Namespaced):
             if type == "unaryfunc":
                 return "METH_NOARGS"
             elif type == "binaryfunc":
-                return "METH_VARARGS"
+                return "METH_O" if self.arguments[1].c_name.upper() == "OBJ" else "METH_VARARGS"
             elif type == "ternaryfunc":
                 return "METH_VARARGS | METH_KEYWORDS"
             return "METH_NOARGS"
+        if type == "unaryfunc":
+            return "METH_O" if self.arguments[0].c_name.upper() == "OBJ" else "METH_VARARGS"
         if type == "binaryfunc":
             return "METH_VARARGS | METH_KEYWORDS"
         if not self.arguments:
