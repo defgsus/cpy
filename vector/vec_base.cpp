@@ -134,6 +134,7 @@ int vec_init(PyObject* self, PyObject* args, PyObject* )
     vec->len = VectorBase::parseSequence(args, vec->v, 16);
     if (vec->len == 0)
         return -1;
+    PRINT("NEW " << vec->toString());
     return 0;
 }
 
@@ -176,6 +177,46 @@ PyObject* vec_str(PyObject* self)
 
 
 
+LOLPIG_DEF( vec.test, )
+PyObject* vec_test(PyObject* , PyObject* obj)
+{
+    PRINT("SEQ " << PySequence_Check(obj)
+          << " LEN " << PySequence_Size(obj) );
+    Py_RETURN_NONE;
+}
+
+
+std::string VectorIter::toString() const
+{
+    std::stringstream s;
+    s << "VectorIter(" << (void*)this << ", ref=" << this->ob_base.ob_refcnt
+      << ", pos="
+      << this->iter << ", ";
+    if (this->vec)
+        s << this->vec->toString() << ", ref=" << this->vec->ob_base.ob_refcnt;
+    else
+        s << "NULL";
+    s << ")";
+    return s.str();
+}
+
+
+// ------------------------ sequence methods ---------------------------
+
+LOLPIG_DEF( vec.__contains__, )
+int vec_contains(PyObject* self, PyObject* obj)
+{
+    double v;
+    if (!fromPython(obj, &v))
+        return 0;
+
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    for (int i=0; i<vec->len; ++i)
+        if (vec->v[i] == v)
+            return 1;
+    return 0;
+}
+
 LOLPIG_DEF( vec.__getitem__, )
 PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 {
@@ -199,63 +240,54 @@ Py_ssize_t vec_len(PyObject* self)
     return vec->len;
 }
 
-LOLPIG_DEF( vec.test, )
-PyObject* vec_test(PyObject* , PyObject* obj)
-{
-    PRINT("SEQ " << PySequence_Check(obj)
-          << " LEN " << PySequence_Size(obj) );
-    Py_RETURN_NONE;
-}
 
-/*
 LOLPIG_DEF( vec.__iter__, )
-PyObject* vec3_iter(PyObject* self)
+PyObject* vec_iter(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    Vector3Iter* iter = new_Vector3Iter();
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorIter* iter = new_VectorIter();
     iter->iter = 0;
     iter->vec = vec;
+    Py_INCREF(vec);
+    PRINT("NEWITER " << iter->toString());
     return reinterpret_cast<PyObject*>(iter);
 }
 
-LOLPIG_DEF( _vec3_iter.__iter__, )
-PyObject* vec3iter_iter(PyObject* self)
+LOLPIG_DEF( _vec_iter.__iter__, )
+PyObject* veciter_iter(PyObject* self)
 {
-    Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
-    Py_INCREF(iter);
-    return reinterpret_cast<PyObject*>(iter);
+    //Py_RETURN_SELF;
+    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    PRINT("ITER " << iter->toString());
+    Py_RETURN_OBJECT(iter);
 }
 
-LOLPIG_DEF( _vec3_iter.__next__, )
-PyObject* vec3iter_next(PyObject* self)
+LOLPIG_DEF( _vec_iter.__next__, )
+PyObject* veciter_next(PyObject* self)
 {
-    Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
-    PyObject* ret = PyFloat_FromDouble(iter->vec->v[iter->iter]);
-    if (iter->iter++ >= iter->vec->len)
+    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    PRINT("NEXT " << iter->toString());
+    if (!iter->vec)
+        return NULL;
+    if (iter->iter >= iter->vec->len)
     {
-        PyErr_SetObject(PyExc_StopIteration, NULL);
+        Py_CLEAR(iter->vec);
+        //PyErr_SetObject(PyExc_StopIteration, NULL);
         return NULL;
     }
-    return ret;
+    return toPython(iter->vec->v[iter->iter++]);
 }
 
-
-LOLPIG_DEF( vec3.__contains__, )
-int vec3_contains(PyObject* self, PyObject* val)
+LOLPIG_DEF( _vec_iter.__dealloc__, )
+void veciter_dealloc(PyObject* self)
 {
-    if (!PyFloat_Check(val))
-    {
-        PyErr_SetString(PyExc_TypeError, "expected float");
-        return -1;
-    }
-    double a = PyFloat_AsDouble(val);
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    for (int i=0; i<3; ++i)
-        if (vec->v[i] == a)
-            return 1;
-    return 0;
+    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    PRINT("DEALLOC " << iter->toString());
+    Py_CLEAR(iter->vec);
+    self->ob_type->tp_free(self);
 }
-*/
+
+
 
 
 } // extern "C"

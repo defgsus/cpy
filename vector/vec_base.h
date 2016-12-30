@@ -27,6 +27,8 @@ extern "C" {
         PyObject_HEAD
         VectorBase* vec;
         int iter;
+
+        std::string toString() const;
     };
 
     VectorIter* new_VectorIter();

@@ -3,7 +3,7 @@
     <p>(c) 2016, stefan.berke@modular-audio-graphics.com</p>
     <p>MIT License</p>
 
-    v3
+    v3 - add CPP11 define
 */
 
 #ifndef PY_UTILS_H
@@ -25,9 +25,12 @@
 #undef T_NONE
 #undef T_OBJECT
 
+#ifndef Py_RETURN_OBJECT
+#   define Py_RETURN_OBJECT(obj__) return Py_INCREF(obj__), reinterpret_cast<PyObject*>(obj__)
+#endif
 
 #ifndef Py_RETURN_SELF
-#   define Py_RETURN_SELF return Py_INCREF(self), reinterpret_cast<PyObject*>(self)
+#   define Py_RETURN_SELF Py_RETURN_OBJECT(self)
 #endif
 
 #ifndef LOLPIG_DEF
