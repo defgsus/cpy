@@ -16,7 +16,6 @@ class Namespaced:
 
 
 
-
 class Argument:
     def __init__(self):
         self.c_name = ""
@@ -34,6 +33,9 @@ class Function(Namespaced):
         self.c_return_type = ""
         self.arguments = []
         self.namespaces = []
+
+    def __hash__(self):
+        return hash(self.c_name)
 
     @property
     def full_c_name(self):
@@ -167,6 +169,9 @@ class Class(Namespaced):
         self.methods = []
         self.normal_methods = []
         self.bases = []
+
+    def __hash__(self):
+        return hash(self.c_name)
 
     def finalize(self):
         self._update_names()
