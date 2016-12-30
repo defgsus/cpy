@@ -38,9 +38,11 @@ extern "C" {
     LOLPIG_DEF(vec, The basic vector class)
     struct VectorBase {
         PyObject_HEAD
-        double v[16];
+        double* v;
         int len;
 
+        void alloc(int len);
+        void dealloc();
         std::string toString(const std::string& name="vec") const;
         static int parseSequence(PyObject* seq, double* v, int max_len);
     };

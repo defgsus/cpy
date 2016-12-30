@@ -16,7 +16,21 @@ Vector3* copy_Vector3(Vector3* src)
     return dst;
 }
 
+LOLPIG_DEF( vec3.__new__, )
+PyObject* vec3_new(struct _typeobject* type, PyObject* args, PyObject* )
+{
+    Vector3* vec = PyObject_NEW(Vector3, type);
+    vec->alloc(3);
+    int len = VectorBase::parseSequence(args, vec->v, vec->len);
+    if (len==0)
+    {
+        Py_DECREF(vec);
+        return NULL;
+    }
+    return reinterpret_cast<PyObject*>(vec);
+}
 
+/*
 LOLPIG_DEF( vec3.__init__, )
 int vec3_init(PyObject* self, PyObject* args, PyObject* )
 {
@@ -25,7 +39,7 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* )
         return -1;
     vec->len = 3;
     return 0;
-}
+}*/
 
 
 LOLPIG_DEF( vec3.copy, )
