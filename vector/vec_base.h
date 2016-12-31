@@ -5,6 +5,9 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#ifdef CPP11
+#   include <functional>
+#endif
 
 #include "py_utils.h"
 
@@ -42,14 +45,22 @@ extern "C" {
         void dealloc();
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;
+#ifdef CPP11
+        /** Returns a deep copy of the class (or subclass)
+            with op applied to each element. */
+        VectorBase* unary_op_copy(std::function<double(double)> op) const;
+        void unary_op_inplace(std::function<double(double)> op) const;
+#endif
         std::string toString(const std::string& name="vec") const;
         std::string toRepr(const std::string& name="vec") const;
-        bool inplace_operator(PyObject* right, void(*op)(double& l, double r));
-        static PyObject* copy_operator(PyObject* left, PyObject* right,
+        bool binary_op_inplace(PyObject* right, void(*op)(double& l, double r));
+        static PyObject* binary_op_copy(PyObject* left, PyObject* right,
                                        double(*op)(double l, double r));
 
         static int parseSequence(PyObject* seq, double* v=NULL,
                                  int max_len=0, int default_len=0);
+
+        double lengthSquared() const;
     };
 
     VectorBase* new_VectorBase();

@@ -161,6 +161,48 @@ void veciter_dealloc(PyObject* self)
 
 
 
+// -------------- number stuff ----------------------
+
+LOLPIG_DEF( vec.__abs__, )
+PyObject* vec_abs(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    return reinterpret_cast<PyObject*>(vec->unary_op_copy([](double x)
+        { return std::abs(x); }));
+#endif
+}
+
+LOLPIG_DEF( vec.__neg__, )
+PyObject* vec_neg(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    return reinterpret_cast<PyObject*>(vec->unary_op_copy([](double x)
+        { return -x; }));
+#endif
+}
+
+LOLPIG_DEF( vec.__pos__, )
+PyObject* vec_pos(PyObject* self)
+{
+    Py_RETURN_SELF;
+}
+
+LOLPIG_DEF( vec.__round__, )
+PyObject* vec_round__(PyObject* self, PyObject* args)
+{
+    long digits = 0;
+    if (PyTuple_Check(args) && PyTuple_Size(args) == 1)
+        fromPython(PyTuple_GetItem(args, 0), &digits);
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    return reinterpret_cast<PyObject*>(vec->unary_op_copy([=](double x)
+        { return pythonRound(x, digits); }));
+#endif
+}
+
+
 // -------------- arithmetic ----------------------
 
 LOLPIG_DEF( vec.__iadd__, )
@@ -168,7 +210,7 @@ PyObject* vec_iadd(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifndef GCC_XML
-    if (!vec->inplace_operator(arg, [](double& l, double r){ l += r; }))
+    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l += r; }))
         return NULL;
 #endif
     Py_RETURN_SELF;
@@ -178,7 +220,7 @@ LOLPIG_DEF( vec.__add__, )
 PyObject* vec_add(PyObject* left, PyObject* right)
 {
 #ifndef GCC_XML
-    return VectorBase::copy_operator(left, right,
+    return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l + r; });
 #endif
 }
@@ -189,7 +231,7 @@ PyObject* vec_isub(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifndef GCC_XML
-    if (!vec->inplace_operator(arg, [](double& l, double r){ l -= r; }))
+    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l -= r; }))
         return NULL;
 #endif
     Py_RETURN_SELF;
@@ -199,7 +241,7 @@ LOLPIG_DEF( vec.__sub__, )
 PyObject* vec_sub(PyObject* left, PyObject* right)
 {
 #ifndef GCC_XML
-    return VectorBase::copy_operator(left, right,
+    return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l - r; });
 #endif
 }
@@ -210,7 +252,7 @@ PyObject* vec_imul(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifndef GCC_XML
-    if (!vec->inplace_operator(arg, [](double& l, double r){ l *= r; }))
+    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l *= r; }))
         return NULL;
 #endif
     Py_RETURN_SELF;
@@ -220,7 +262,7 @@ LOLPIG_DEF( vec.__mul__, )
 PyObject* vec_mul(PyObject* left, PyObject* right)
 {
 #ifndef GCC_XML
-    return VectorBase::copy_operator(left, right,
+    return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l * r; });
 #endif
 }
@@ -231,7 +273,7 @@ PyObject* vec_itruediv(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifndef GCC_XML
-    if (!vec->inplace_operator(arg, [](double& l, double r){ l /= r; }))
+    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l /= r; }))
         return NULL;
 #endif
     Py_RETURN_SELF;
@@ -241,9 +283,125 @@ LOLPIG_DEF( vec.__truediv__, )
 PyObject* vec_truediv(PyObject* left, PyObject* right)
 {
 #ifndef GCC_XML
-    return VectorBase::copy_operator(left, right,
+    return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l / r; });
 #endif
+}
+
+
+
+// ----------------- inplace methods -------------------------
+
+LOLPIG_DEF( vec.round, (
+    round() -> self
+    round(num_digits) -> self
+    Applies the round() function to all elements, INPLACE
+    ))
+PyObject* vec_round(PyObject* self, PyObject* args)
+{
+    long digits = 0;
+    if (PyTuple_Check(args) && PyTuple_Size(args) == 1)
+        fromPython(PyTuple_GetItem(args, 0), &digits);
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    vec->unary_op_inplace([=](double x){ return pythonRound(x, digits); });
+#endif
+    Py_RETURN_SELF;
+}
+
+
+LOLPIG_DEF( vec.floor, (
+    floor() -> self
+    Applies the floor() function to all elements, INPLACE
+    ))
+PyObject* vec_floor(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    vec->unary_op_inplace([](double x){ return std::floor(x); });
+#endif
+    Py_RETURN_SELF;
+}
+
+
+LOLPIG_DEF( vec.normalize, (
+    normalize() -> self
+    Normalizes the vector, INPLACE
+    This essentially makes the vector length 1
+    Does nothing when vector is length 0
+    ))
+PyObject* vec_normalize(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    double l = vec->lengthSquared();
+    if (l)
+    {
+        l = 1. / std::sqrt(l);
+#ifdef CPP11
+        vec->unary_op_inplace([=](double x){ return x*l; });
+#endif
+    }
+    Py_RETURN_SELF;
+}
+
+
+
+// ----------------- getter -------------------------------
+
+LOLPIG_DEF(vec.length, (
+    length() -> float
+    Returns euclidean length of vector.
+    ))
+PyObject* vec_length(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    return toPython(std::sqrt(vec->lengthSquared()));
+}
+
+LOLPIG_DEF(vec.length_squared, (
+    length_squared() -> float
+    Returns square of euclidean length of vector.
+    Faster than length()
+    ))
+PyObject* vec_length_squared(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    return toPython(vec->lengthSquared());
+}
+
+
+LOLPIG_DEF(vec.distance, (
+    distance(seq) -> float
+    Returns euclidean distance between this and other vector.
+    Length must be equal.
+    ))
+PyObject* vec_distance(PyObject* self, PyObject* args)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    double v[vec->len];
+    if (!VectorBase::parseSequence(args, v, vec->len))
+        return NULL;
+    double l = 0.;
+    for (int i=0; i<vec->len; ++i)
+        l += std::pow(v[i] - vec->v[i], 2.);
+    return toPython(std::sqrt(l));
+}
+
+LOLPIG_DEF(vec.distance_squared, (
+    distance_squared(seq) -> float
+    Returns square of euclidean distance between this and other vector.
+    Length must be equal.
+    ))
+PyObject* vec_distance_squared(PyObject* self, PyObject* args)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    double v[vec->len];
+    if (!VectorBase::parseSequence(args, v, vec->len))
+        return NULL;
+    double l = 0.;
+    for (int i=0; i<vec->len; ++i)
+        l += std::pow(v[i] - vec->v[i], 2.);
+    return toPython(l);
 }
 
 
@@ -273,6 +431,22 @@ VectorBase* VectorBase::copy() const
     return vec;
 }
 
+#ifdef CPP11
+VectorBase* VectorBase::unary_op_copy(std::function<double(double)> op) const
+{
+    VectorBase* vec = PyObject_New(VectorBase, this->ob_base.ob_type);
+    vec->alloc(this->len);
+    for (int i=0; i<this->len; ++i)
+        vec->v[i] = op(this->v[i]);
+    return vec;
+}
+void VectorBase::unary_op_inplace(std::function<double(double)> op) const
+{
+    for (int i=0; i<this->len; ++i)
+        this->v[i] = op(this->v[i]);
+}
+
+#endif
 
 std::string VectorBase::toString(const std::string& name) const
 {
@@ -390,7 +564,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
 }
 
 
-bool VectorBase::inplace_operator(PyObject* arg,
+bool VectorBase::binary_op_inplace(PyObject* arg,
                                   void(*op)(double& l, double r))
 {
     double f;
@@ -437,7 +611,7 @@ bool VectorBase::inplace_operator(PyObject* arg,
     return false;
 }
 
-PyObject* VectorBase::copy_operator(PyObject* left, PyObject* right,
+PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
                                     double(*op)(double l, double r))
 {
     // scalar * vec
@@ -552,6 +726,14 @@ PyObject* VectorBase::copy_operator(PyObject* left, PyObject* right,
     return NULL;
 }
 
+
+double VectorBase::lengthSquared() const
+{
+    double l = 0.;
+    for (int i=0; i<len; ++i)
+        l += v[i] * v[i];
+    return l;
+}
 
 } // extern "C"
 	

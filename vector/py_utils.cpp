@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "py_utils.h"
 
 #ifndef PYUTILS_PRINT
@@ -199,6 +201,21 @@ bool checkIndex(Py_ssize_t index, Py_ssize_t len)
 
 
 
+double pythonRound(double v, int n)
+{
+    if (n > 0)
+    {
+        n = std::pow(10, n);
+        return std::round(v*n) / n;
+    }
+    else if (n < 0)
+    {
+        n = std::pow(10, -n);
+        return std::round(v/n) * n;
+    }
+    else
+        return std::round(v);
+}
 
 
 void setPythonError(PyObject* exc, const std::string& txt)

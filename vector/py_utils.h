@@ -120,6 +120,8 @@ bool checkIndex(Py_ssize_t index, Py_ssize_t len);
 /** print object internals */
 void dumpObject(PyObject* arg, bool introspect);
 
+double pythonRound(double, int n);
+
 /** A std::stringstream wrapper that converts to
     std::string or PyObject* automatically */
 class SStream
