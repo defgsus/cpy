@@ -9,7 +9,7 @@
 #   include <functional>
 #endif
 
-#include "py_utils.h"
+#include "../py_utils.h"
 
 #define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
 

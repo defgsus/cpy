@@ -16,6 +16,16 @@ bool isNone(PyObject* o)
     return PyObject_TypeCheck(o, Py_TYPE(Py_None));
 }
 
+bool isEmpty(PyObject* o)
+{
+    if (!o || isNone(o))
+        return true;
+    if (PySequence_Check(o))
+        return PySequence_Size(o) < 1;
+    if (PyMapping_Check(o))
+        return PyMapping_Size(o) < 1;
+    return false;
+}
 
 PyObject* toPython(const std::string& s)
 {

@@ -208,6 +208,8 @@ class Class(Namespaced):
         for i in other.methods:
             if not self.has_method(i.c_name):
                 self.methods.append(i)
+            if not self.bases:
+                self.bases = i.bases
 
     def _update_names(self):
         self.class_struct_name = self.c_name
@@ -315,11 +317,11 @@ class Context:
     def _sort_classes_by_bases(self):
         srt = []
         for c in self.classes:
-            i = 0
-            while i < len(srt):
+            i = len(srt)-1
+            while i > 0:
                 if srt[i].has_base(c):
                     break
-                i += 1
+                i -= 1
             srt.insert(i, c)
         self.classes = srt
 

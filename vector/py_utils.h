@@ -13,6 +13,10 @@
 #   define CPP11
 #endif
 
+#ifndef PYUTILS_PRINT
+#   include <iostream>
+#   define PYUTILS_PRINT(arg__) { std::cout << arg__ << std::endl; }
+#endif
 
 #include <string>
 #include <sstream>
@@ -41,6 +45,7 @@
 namespace PyUtils {
 
 bool isNone(PyObject*);
+bool isEmpty(PyObject*);
 
 PyObject* toPython(const std::string&);
 PyObject* toPython(const char*);

@@ -21,7 +21,7 @@ PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
 
     VectorBase* vec = PyObject_NEW(VectorBase, type);
     vec->alloc(len);
-    VectorBase::parseSequence(args, vec->v, 0, 1);
+    VectorBase::parseSequence(args, vec->v, len, 1);
 
     return reinterpret_cast<PyObject*>(vec);
 }

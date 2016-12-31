@@ -17,22 +17,28 @@ TEMPLATE = app
 LIBS += -lpython3.4m
 
 HEADERS += \
-    vec_base.h \
     vec_module.h \ 
+    pyimpl/vec_base.h \
+    pyimpl/mat_base.h \
     py_utils.h
 
 SOURCES += \
-    vec_base.cpp \
-    vec3.cpp \
-    vec_module.cpp \
     main.cpp \
-    py_utils.cpp
+    py_utils.cpp \
+    pyimpl/mat_base.cpp \
+    pyimpl/vec3.cpp \
+    pyimpl/vec_base.cpp \
+    vec_module.cpp
 
 
-python_modfiles = $$PWD/vec_base.cpp $$PWD/vec3.cpp
+python_modfiles = \
+    $$PWD/pyimpl/vec_base.cpp \
+    $$PWD/pyimpl/mat_base.cpp \
+    $$PWD/pyimpl/vec3.cpp
+
 pymod.target = vec_module.h
-#pymod.commands = /home/defgsus/prog/python/dev/lolpig/lolpig.py -i $$python_modfiles -o $$PWD/vec_module -m vec -n MOP
-pymod.commands = lolpig.py -i $$python_modfiles -o $$PWD/vec_module -m vec -n MOP
+pymod.commands = /home/defgsus/prog/python/dev/lolpig/lolpig.py -i $$python_modfiles -o $$PWD/vec_module -m vec -n MOP
+#pymod.commands = lolpig.py -i $$python_modfiles -o $$PWD/vec_module -m vec -n MOP
 pymod.depends = $$python_modfiles
 
 QMAKE_EXTRA_TARGETS += pymod
