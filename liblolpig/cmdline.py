@@ -90,23 +90,25 @@ def process_commands(argv=None):
 
     a.dump()
 
-    import lolpig
+    from liblolpig import XmlParser, Context, Renderer
 
-    ctx = lolpig.Context()
+    ctx = Context()
 
     for fn in a.input_filenames:
         print("parsing %s ..." % fn)
-        p = lolpig.XmlParser()
+        p = XmlParser()
         p.parse(fn)
         #p.dump()
-        ctx.merge(p.as_context())
+        c = p.as_context()
+        #c.dump()
+        ctx.merge(c)
     ctx.finalize()
 
     ctx.module_name = a.module_name
     ctx.header_name = a.header_inc
     ctx.dump()
 
-    r = lolpig.Renderer(ctx)
+    r = Renderer(ctx)
     r.namespaces = a.namespaces
     r.write_to_file(a.output_hpp, r.render_hpp())
     r.write_to_file(a.output_cpp, r.render_cpp())

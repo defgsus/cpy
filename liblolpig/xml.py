@@ -485,7 +485,7 @@ class XmlParser:
         """
         if file.do_scan:
             file.do_scan = False
-            if file.name.startswith("<") or file.name.startswith("/"):
+            if file.name.startswith("<"):# or file.name.startswith("/")):
                 return None, None
             with open(file.name) as f:
                 file.content = f.read()
