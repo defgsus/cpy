@@ -57,10 +57,12 @@ class Function(Namespaced):
             r.append(a.c_type)
         return r
 
-    def c_argument_list(self):
+    def c_argument_list(self, args=None):
         """Returns a c++ compatible string with the function arguments"""
+        if not args:
+            args = self.arguments
         r = ""
-        for a in self.arguments:
+        for a in args:
             if r:
                 r += ", "
             r += "%s %s" % (a.c_type, a.c_name if a.c_name else "")
@@ -154,19 +156,31 @@ class Function(Namespaced):
             return
         args = FUNCTIONS[type]
         if not self.c_return_type == args[0]:
-            raise TypeError("Function %s has wrong return type %s, expected %s" % (
-                self.c_name, self.c_return_type, args[0]
+            raise TypeError("Function %s has wrong return type %s, expected %s\nshould be like: %s" % (
+                self.c_name, self.c_return_type, args[0], self.render_ideal()
             ))
         if not len(self.arguments) == len(args[1]):
-            raise TypeError("Function %s has wrong number of arguments, expected %d" % (
-                self.c_name, len(args[1])
+            raise TypeError("Function %s has wrong number of arguments, expected %d\nshould be like: %s" % (
+                self.c_name, len(args[1]), self.render_ideal()
             ))
         for i, a in enumerate(args[1]):
             if not self.arguments[i].c_type == a:
-                raise TypeError("Function %s has wrong argument #%d %s, expected %s" % (
-                    self.c_name, i+1, self.arguments[i].c_type, a
+                raise TypeError("Function %s has wrong argument #%d %s, expected %s\nshould be like: %s" % (
+                    self.c_name, i+1, self.arguments[i].c_type, a, self.render_ideal()
                 ))
 
+    def render_ideal(self):
+        type = self.get_function_type()
+        if not type:
+            raise NotImplementedError("XXX")
+        fargs = FUNCTIONS[type]
+        args = []
+        for a in fargs[1]:
+            arg = Argument()
+            arg.c_type = a
+            arg.c_name = "" # TODO
+            args.append(arg)
+        return "%s %s(%s)" % (fargs[0], self.c_name, self.c_argument_list(args))
 
 
 class Class(Namespaced):

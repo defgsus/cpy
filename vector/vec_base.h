@@ -21,6 +21,11 @@ extern "C" {
 
     struct VectorBase;
 
+    /** Create the appropriate vector instance.
+        Values from @p init will be written to vector, if not NULL. */
+    VectorBase* createVector(int len, const double* init = NULL);
+
+
     /** iterator for vec classes */
     LOLPIG_DEF(_vec_iter, Vector iterator)
     struct VectorIter {
@@ -45,18 +50,35 @@ extern "C" {
         void dealloc();
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;
+        /** Text repr of vector as in constructor call. */
+        std::string toString(const std::string& class_name) const;
+        std::string toRepr(const std::string& class_name) const;
+
 #ifdef CPP11
         /** Returns a deep copy of the class (or subclass)
             with op applied to each element. */
         VectorBase* unary_op_copy(std::function<double(double)> op) const;
+        /** Applies op to all elements */
         void unary_op_inplace(std::function<double(double)> op) const;
 #endif
-        std::string toString(const std::string& name="vec") const;
-        std::string toRepr(const std::string& name="vec") const;
+        /** Apply right operand to left self */
         bool binary_op_inplace(PyObject* right, void(*op)(double& l, double r));
+        /** Apply binary operator.
+            Handles any type combination of left and right,
+            like vec*scalar, scalar*vec, vec*vec, etc.. */
         static PyObject* binary_op_copy(PyObject* left, PyObject* right,
                                        double(*op)(double l, double r));
 
+        /** Scans any sequence or sub-sequence into @p v.
+         * Eg. It understands: 1 or (1,) or (1,2),3, ((1,2),(3,4)), etc..
+         * @param seq Python scalar or sequence
+         * @param v pointer to @p max_len bytes, or NULL for just-parse
+         * @param max_len maximum number of elements reserved in @p v.
+         *        If zero, max_len defaults to maximum possible!
+         * @param default_len If not zero, a minimum length v should have.
+         *        Scalars fill this whole range, sequences will be zero-padded to fit.
+         * @return The actual number of floats read from python argument.
+         */
         static int parseSequence(PyObject* seq, double* v=NULL,
                                  int max_len=0, int default_len=0);
 

@@ -59,14 +59,14 @@ LOLPIG_DEF( vec.__repr__, )
 PyObject* vec_repr(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    return toPython(vec->toRepr());
+    return toPython(vec->toRepr("vec"));
 }
 
 LOLPIG_DEF( vec.__str__, )
 PyObject* vec_str(PyObject* self)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    return toPython(vec->toString());
+    return toPython(vec->toString("vec"));
 }
 
 
@@ -160,6 +160,39 @@ void veciter_dealloc(PyObject* self)
 }
 
 
+// ------------ splitting -----------------
+
+LOLPIG_DEF( vec.split, (
+    split(int) -> [vec,]
+    Returns a list of vectors split at even intervals.
+    >>> vec(1,2,3,4).split(2)
+    [vec(1, 2), vec(3, 4)]
+    ))
+PyObject* vec_split(PyObject* self, PyObject* obj)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    long n;
+    if (!expectFromPython(obj, &n))
+        return NULL;
+    if (n < 1)
+        n = 1;
+    int len = (vec->len+n-1) / n;
+    PyObject* ret = PyList_New(len);
+    int read = 0;
+    for (int i=0; i<len; ++i)
+    {
+        int r = std::min(n, (long)(vec->len-read));
+        if (r > 0)
+        {
+            VectorBase* v = createVector(r, &vec->v[read]);
+            PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(v));
+            read += r;
+        }
+    }
+    return ret;
+}
+
+
 
 // -------------- number stuff ----------------------
 
@@ -200,6 +233,37 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
     return reinterpret_cast<PyObject*>(vec->unary_op_copy([=](double x)
         { return pythonRound(x, digits); }));
 #endif
+}
+
+LOLPIG_DEF( test, )
+PyObject* test_foo(PyObject*, PyObject* args)
+{
+    PYVEC_DEBUG(typeName(args, true));
+    Py_RETURN_NONE;
+}
+
+LOLPIG_DEF( vec.__pow__, (
+    pow(seq[, seq]) -> vec
+    Applies the pow() function to all elements
+    >>> pow(vec(1,2,3), 2)
+    vec(1,4,9)
+    >>> pow(vec(1,2,3), (1,2,3))
+    vec(1,4,27)
+    ))
+PyObject* vec_pow__(PyObject* self, PyObject* args, PyObject* /*kwargs*/)
+{
+    PYVEC_DEBUG(typeName(args, true));
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    // exp only
+    double e[vec->len];
+    if (!VectorBase::parseSequence(args, e, vec->len))
+        return NULL;
+#ifdef CPP11
+    double* p=e;
+    return reinterpret_cast<PyObject*>(
+                vec->unary_op_copy([&](double x) { return std::pow(x, *p++); }));
+#endif
+    Py_RETURN_SELF;
 }
 
 
@@ -405,6 +469,61 @@ PyObject* vec_distance_squared(PyObject* self, PyObject* args)
 }
 
 
+LOLPIG_DEF(vec.dot, (
+    dot(seq) -> float
+    Returns dot product of this vector and other sequence.
+    Length must be equal.
+    ))
+PyObject* vec_dot(PyObject* self, PyObject* args)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    double v[vec->len];
+    if (!VectorBase::parseSequence(args, v, vec->len))
+        return NULL;
+    double l = 0.;
+    for (int i=0; i<vec->len; ++i)
+        l += v[i] * vec->v[i];
+    return toPython(l);
+}
+
+
+
+
+// -------------- copy functions --------------------
+
+LOLPIG_DEF( vec.rounded, )
+PyObject* vec_rounded(PyObject* self, PyObject* args)
+{
+    return vec_round__(self, args);
+}
+
+LOLPIG_DEF( vec.floored, )
+PyObject* vec_floored(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifdef CPP11
+    return reinterpret_cast<PyObject*>(
+        vec->unary_op_copy([](double x) { return std::floor(x); }));
+#endif
+}
+
+LOLPIG_DEF( vec.normalized, )
+PyObject* vec_normalized(PyObject* self)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    double l = vec->lengthSquared();
+    if (!l)
+        Py_RETURN_SELF;
+    l = 1./std::sqrt(l);
+#ifdef CPP11
+    return reinterpret_cast<PyObject*>(
+        vec->unary_op_copy([=](double x) { return x * l; }));
+#endif
+}
+
+
+
+
 // ---------------------- helper -----------------------------
 
 void VectorBase::alloc(int len)
@@ -431,6 +550,21 @@ VectorBase* VectorBase::copy() const
     return vec;
 }
 
+VectorBase* createVector(int len, const double* v)
+{
+    VectorBase* vec;
+    switch (len)
+    {
+        default: vec = new_VectorBase(); break;
+        case 3: vec = reinterpret_cast<VectorBase*>(new_Vector3()); break;
+    }
+    vec->alloc(len);
+    if (v)
+        for (int i=0; i<len; ++i)
+            vec->v[i] = v[i];
+    return vec;
+}
+
 #ifdef CPP11
 VectorBase* VectorBase::unary_op_copy(std::function<double(double)> op) const
 {
@@ -450,12 +584,22 @@ void VectorBase::unary_op_inplace(std::function<double(double)> op) const
 
 std::string VectorBase::toString(const std::string& name) const
 {
+    int group = 0;
+    if (this->len > 5)
+    if (double a = std::sqrt(this->len))
+        if (a == std::floor(a))
+            group = a;
+
     std::stringstream s;
     s << name << "(";
     for (int i=0; i<this->len; ++i)
     {
         if (i>0)
-             s << ", ";
+        {
+             s << ",";
+             if (!group || i%group == 0)
+                 s << " ";
+        }
         s << this->v[i];
     }
     s << ")";
@@ -477,7 +621,7 @@ std::string VectorIter::toString() const
       << ", pos="
       << this->iter << ", ";
     if (this->vec)
-        s << this->vec->toString() << ", ref=" << this->vec->ob_base.ob_refcnt;
+        s << this->vec->toString("vec") << ", ref=" << this->vec->ob_base.ob_refcnt;
     else
         s << "NULL";
     s << ")";

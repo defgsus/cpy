@@ -105,7 +105,7 @@ PyObject* removeArgumentTuple(PyObject* arg);
 
 void setPythonError(PyObject* exc, const std::string& txt);
 
-std::string typeName(const PyObject* arg);
+std::string typeName(PyObject* arg, bool expand_sequences = false);
 
 #ifdef CPP11
 /** Iterates over every item in the PySequence. If seq is not sequencable,

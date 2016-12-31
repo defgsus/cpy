@@ -223,12 +223,31 @@ void setPythonError(PyObject* exc, const std::string& txt)
     PyErr_SetObject(exc, toPython(txt));
 }
 
-std::string typeName(const PyObject *arg)
+std::string typeName(PyObject *arg, bool expand)
 {
     if (!arg)
         return "NULL";
-    auto s = std::string(arg->ob_type->tp_name);
-    return s;
+    if (expand)
+    {
+        std::string s;
+        if (PyList_Check(arg))
+        {
+            s = "[";
+            for (Py_ssize_t i=0; i<PyList_Size(arg); ++i)
+                s += typeName(PyList_GetItem(arg, i), true) + ",";
+            s += "]";
+            return s;
+        }
+        else if (PyTuple_Check(arg))
+        {
+            s = "(";
+            for (Py_ssize_t i=0; i<PyTuple_Size(arg); ++i)
+                s += typeName(PyTuple_GetItem(arg, i), true) + ",";
+            s += ")";
+            return s;
+        }
+    }
+    return std::string(arg->ob_type->tp_name);
 }
 
 bool iterateSequence(PyObject* seq, std::function<bool(PyObject*item)> foo)
