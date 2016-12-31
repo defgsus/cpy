@@ -1,4 +1,5 @@
 #include "mat_base.h"
+#include <vector>
 
 using namespace PyUtils;
 
@@ -111,6 +112,38 @@ PyObject* mat_trace(PyObject* self)
     return toPython(s);
 }
 
+LOLPIG_DEF( mat.column, (
+    column(int) -> vec
+    Returns the specified column as vector
+    ))
+PyObject* mat_column(PyObject* self, PyObject* obj)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    long idx;
+    if (!fromPython(obj, &idx))
+        return NULL;
+    if (!checkIndex(idx, vec->num_cols))
+        return NULL;
+    return reinterpret_cast<PyObject*>(
+                createVector(vec->num_rows, &vec->v[idx*vec->num_rows]) );
+}
+
+LOLPIG_DEF( mat.row, (
+    row(int) -> vec
+    Returns the specified row as vector
+    ))
+PyObject* mat_row(PyObject* self, PyObject* obj)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    long idx;
+    if (!fromPython(obj, &idx))
+        return NULL;
+    if (!checkIndex(idx, vec->num_rows))
+        return NULL;
+    return reinterpret_cast<PyObject*>(
+                createVector(vec->num_rows, &vec->v[idx], vec->num_rows) );
+}
+
 
 LOLPIG_DEF( mat.columns, (
     columns() -> [vec,]
@@ -134,21 +167,120 @@ LOLPIG_DEF( mat.rows, (
     rows() -> [vec,]
     Returns the rows as list of vectors
     ))
-PyObject* mat_row(PyObject* self)
+PyObject* mat_rows(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
 
-    double v[vec->num_cols];
+    //double v[vec->num_cols];
     PyObject* ret = PyList_New(vec->num_rows);
     for (int i=0; i<vec->num_rows; ++i)
     {
-        for (int j=0; j<vec->num_cols; ++j)
-            v[j] = vec->v[j*vec->num_rows+i];
-        VectorBase* ve = createVector(vec->num_cols, v);
+        //for (int j=0; j<vec->num_cols; ++j)
+        //    v[j] = vec->v[j*vec->num_rows+i];
+        //VectorBase* ve = createVector(vec->num_cols, v);
+        VectorBase* ve = createVector(vec->num_cols, &vec->v[i], vec->num_rows);
         PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(ve));
     }
     return ret;
 }
+
+
+
+LOLPIG_DEF( mat.set_identity, (
+    set_identity() -> self
+    set_identity(float) -> self
+    Sets the identity matrix, with optional value other than 1.0.
+    ))
+PyObject* mat_set_identity(PyObject* self, PyObject* args)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    args = removeArgumentTuple(args);
+    double i=1.;
+    fromPython(args, &i);
+    vec->setIdentity(i);
+    Py_RETURN_SELF;
+}
+
+LOLPIG_DEF( mat.transpose, (
+    transpose() -> self
+    Transposes the matrix, INPLACE
+    ))
+PyObject* mat_transpose(PyObject* self)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+
+    std::vector<double> tmp(vec->len);
+    for (int i=0; i<vec->len; ++i)
+        tmp[i] = vec->v[i];
+
+    for (int c=0; c<vec->num_cols; ++c)
+    for (int r=0; r<vec->num_rows; ++r)
+        vec->v[r*vec->num_cols+c] = tmp[c*vec->num_rows+r];
+    std::swap(vec->num_rows, vec->num_cols);
+
+    Py_RETURN_SELF;
+}
+
+
+
+
+// -------------- value copying ----------------
+
+LOLPIG_DEF( mat.transposed, (
+    transposed() -> mat
+    Returns the transpose of the matrix
+    ))
+PyObject* mat_transposed(PyObject* self)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* ret = createMatrix(vec->num_rows, vec->num_cols);
+
+    for (int c=0; c<vec->num_cols; ++c)
+    for (int r=0; r<vec->num_rows; ++r)
+        ret->v[r*vec->num_cols+c] = vec->v[c*vec->num_rows+r];
+
+    return reinterpret_cast<PyObject*>(ret);
+}
+
+
+
+// ---------------------- helper ------------------
+
+MatrixBase* createMatrix(int columns, int rows, double *data)
+{
+    MatrixBase* vec = NULL;
+    if (columns == rows) switch (rows)
+    {
+        default: break;
+    }
+
+    if (!vec)
+        vec = new_MatrixBase();
+
+    vec->alloc(columns * rows);
+    vec->num_cols = columns;
+    vec->num_rows = rows;
+
+    if (data)
+        for (int i=0; i<vec->len; ++i)
+            vec->v[i] = *data++;
+
+    return vec;
+}
+
+void MatrixBase::setIdentity(double val)
+{
+    set(0);
+    int sm = std::min(num_rows, num_cols);
+    for (int i=0; i<sm; ++i)
+    {
+        int idx = i*(num_rows+1);
+        if (idx < len)
+            v[idx] = val;
+    }
+}
+
+
 
 
 } // extern "C"

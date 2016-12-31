@@ -23,7 +23,7 @@ extern "C" {
 
     /** Create the appropriate vector instance.
         Values from @p init will be written to vector, if not NULL. */
-    VectorBase* createVector(int len, const double* init = NULL);
+    VectorBase* createVector(int len, const double* init = NULL, int stride=1);
 
 
     /** iterator for vec classes */
@@ -48,6 +48,7 @@ extern "C" {
 
         void alloc(int len);
         void dealloc();
+        void set(double val);
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;
         /** Text repr of vector as in constructor call. */

@@ -15,10 +15,14 @@ extern "C" {
     {
         int num_rows,
             num_cols;
+
+        void setIdentity(double val=1.);
     };
 
     MatrixBase* new_MatrixBase();
     bool is_MatrixBase(PyObject*);
+
+    MatrixBase* createMatrix(int columns, int rows, double* data = NULL);
 
 } // extern "C"
 

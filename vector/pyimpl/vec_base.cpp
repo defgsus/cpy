@@ -541,6 +541,12 @@ void VectorBase::dealloc()
     v = NULL;
 }
 
+void VectorBase::set(double val)
+{
+    for (int i=0; i<len; ++i)
+        v[i] = val;
+}
+
 VectorBase* VectorBase::copy() const
 {
     VectorBase* vec = PyObject_New(VectorBase, this->ob_base.ob_type);
@@ -550,7 +556,7 @@ VectorBase* VectorBase::copy() const
     return vec;
 }
 
-VectorBase* createVector(int len, const double* v)
+VectorBase* createVector(int len, const double* v, int stride)
 {
     VectorBase* vec;
     switch (len)
@@ -561,7 +567,7 @@ VectorBase* createVector(int len, const double* v)
     vec->alloc(len);
     if (v)
         for (int i=0; i<len; ++i)
-            vec->v[i] = v[i];
+            vec->v[i] = v[i*stride];
     return vec;
 }
 
