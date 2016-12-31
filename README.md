@@ -2,7 +2,7 @@
 
 ![lolpig_logo](lolpig_logo.png)
 
-Work in progress..
+Work in progress.. but getting there :)
 
 After the attempt to [convert annotated python to c](https://github.com/defgsus/cppy) 
 which basically works but requires writing C code in a python file 
@@ -10,8 +10,9 @@ which basically works but requires writing C code in a python file
 and generate the module code automatically. For example:
 
 ```C++
+// def.cpp
 
-CPY_DEF(name_of_python_func,
+CPY_DEF(add,
     Adds two numbers, returns float.
     Multi-line doc-strings, yeah!
 )
@@ -24,11 +25,34 @@ PyObject* func_add(PyObject* args)
 }
 ```
 
-Again, this is supposed to be a low-level helper. 
-No automatic type conversions and such. It's just for generating the 
-boiler-plate code for the python module.
+Calling:
 
-Defining a class looks like this:
+```bash
+lolpig.py -i def.cpp -o module -m test_mod 
+```
+
+will create a `module.h` and `module.cpp` file containing all the necessary 
+c-api tango. In C, you can then, say:
+
+```c++
+#include "test_mod.h"
+...
+initialize_module_test_mod();
+Py_Main(argc, argv);
+```
+
+and in Python:
+
+```python
+from test_mod import *
+add(1, 2)
+```
+
+Again, this is supposed to be a low-level helper. 
+No automatic type conversions and such. You write the pure Python/C-api functions, 
+and *lolpig* generates all the boiler-plate code for the python module. 
+
+Defining a class and a more complete example looks like this:
 
 ```C++
 // module_impl.cpp
@@ -87,14 +111,16 @@ int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 Every function and struct prefixed with the `LOLPIG_DEF` macro will be 
 considered part of the module. 
 
-Running **lolpig** on the above .cpp file creates a .h and .cpp file defining
+Running *lolpig* on the above .cpp file creates a .h and .cpp file defining
 the c-api python module. All three files (your own and the two created ones)
 need to be compiled and that's just it :)
 
+*lolpig* verifies function signatures of known functions, e.g. **__getitem__**.
 
-The current version is a bit broken. lolpig.py hardwires to vector module
-and i just realized that gcc-xml does not support c++11. 
-demotivated for the moment..
-- either must depend on CastXML or directly on LLVM for c++11..
+*lolpig* currently uses **gcc-xml** to parse the C/C++ files. That means that
+C++11 features are not supported - unfortunately. Fixes are:
+- Hide all C++11 stuff via a **GCC_XML** macro. This macro is defined when
+*lolpig* analyzes your code
+- Switch to CastXML or directly to LLVM for c++11.. (not keen about this yet)
 - or look into Doxygen if it parses enough of the C/C++1x to replace gcc-xml  
 
