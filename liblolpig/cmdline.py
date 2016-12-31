@@ -24,7 +24,7 @@ namespaces: %s
 
     def help(self):
         print("""
-lolpig.py -i files -o file [-m modulename] [-n namespaces]
+Usage: lolpig.py -i files -o file [-m modulename] [-n namespaces]
 """)
 
     def verify(self):
@@ -77,17 +77,40 @@ lolpig.py -i files -o file [-m modulename] [-n namespaces]
         self.header_inc = os.path.basename(self.output_hpp)
 
 
-
-if __name__ == "__main__":
-    para = ["/pythonprog/lolpig.py", "-i", "cpp/rein1.cpp", "cpp/rein2.cpp",
-            "-o", "gen/raus",
-            "-n", "OUT", "SPACE",
-            "-m", "das_mordul"]
+def process_commands(argv=None):
+    if not argv:
+        import sys
+        argv = sys.argv
 
     a = Arguments()
-    if not a.parse(para):
+    if not a.parse(argv) or not a.verify():
+        a.help()
         print(a.error_txt)
-    if not a.verify():
-        print(a.error_txt)
+        exit(1)
 
     a.dump()
+
+    import lolpig
+
+    ctx = lolpig.Context()
+
+    for fn in a.input_filenames:
+        print("parsing %s ..." % fn)
+        p = lolpig.XmlParser()
+        p.parse(fn)
+        #p.dump()
+        ctx.merge(p.as_context())
+    ctx.finalize()
+
+    ctx.module_name = a.module_name
+    ctx.header_name = a.header_inc
+    ctx.dump()
+
+    r = lolpig.Renderer(ctx)
+    r.namespaces = a.namespaces
+    r.write_to_file(a.output_hpp, r.render_hpp())
+    r.write_to_file(a.output_cpp, r.render_cpp())
+
+
+if __name__ == "__main__":
+    process_commands()
