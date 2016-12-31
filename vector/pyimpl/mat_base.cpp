@@ -61,14 +61,14 @@ LOLPIG_DEF( mat.__repr__, )
 PyObject* mat_repr(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-    return toPython(vec->toRepr("mat"));
+    return toPython(vec->toRepr("mat", vec->num_rows));
 }
 
 LOLPIG_DEF( mat.__str__, )
 PyObject* mat_str(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-    return toPython(vec->toString("mat"));
+    return toPython(vec->toString("mat", vec->num_rows));
 }
 
 
@@ -114,7 +114,7 @@ PyObject* mat_trace(PyObject* self)
 
 LOLPIG_DEF( mat.columns, (
     columns() -> [vec,]
-    Returns the columns as vectors
+    Returns the columns as list of vectors
     ))
 PyObject* mat_columns(PyObject* self)
 {
@@ -124,9 +124,28 @@ PyObject* mat_columns(PyObject* self)
     for (int i=0; i<vec->num_cols; ++i)
     {
         int idx = i * vec->num_rows;
-        int len = std::min(vec->num_rows, vec->len-idx);
-        VectorBase* v = createVector(len, &vec->v[idx]);
+        VectorBase* v = createVector(vec->num_rows, &vec->v[idx]);
         PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(v));
+    }
+    return ret;
+}
+
+LOLPIG_DEF( mat.rows, (
+    rows() -> [vec,]
+    Returns the rows as list of vectors
+    ))
+PyObject* mat_row(PyObject* self)
+{
+    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+
+    double v[vec->num_cols];
+    PyObject* ret = PyList_New(vec->num_rows);
+    for (int i=0; i<vec->num_rows; ++i)
+    {
+        for (int j=0; j<vec->num_cols; ++j)
+            v[j] = vec->v[j*vec->num_rows+i];
+        VectorBase* ve = createVector(vec->num_cols, v);
+        PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(ve));
     }
     return ret;
 }

@@ -582,13 +582,12 @@ void VectorBase::unary_op_inplace(std::function<double(double)> op) const
 
 #endif
 
-std::string VectorBase::toString(const std::string& name) const
+std::string VectorBase::toString(const std::string& name, int group) const
 {
-    int group = 0;
-    if (this->len > 5)
-    if (double a = std::sqrt(this->len))
-        if (a == std::floor(a))
-            group = a;
+    if (!group && this->len > 5)
+        if (double a = std::sqrt(this->len))
+            if (a == std::floor(a))
+                group = a;
 
     std::stringstream s;
     s << name << "(";
@@ -606,11 +605,11 @@ std::string VectorBase::toString(const std::string& name) const
     return s.str();
 }
 
-std::string VectorBase::toRepr(const std::string& name) const
+std::string VectorBase::toRepr(const std::string& name, int groups) const
 {
     std::stringstream s;
     //s << (void*)this << ":";
-    s << toString(name);
+    s << toString(name, groups);
     return s.str();
 }
 

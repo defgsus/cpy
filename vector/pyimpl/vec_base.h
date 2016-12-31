@@ -51,8 +51,8 @@ extern "C" {
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;
         /** Text repr of vector as in constructor call. */
-        std::string toString(const std::string& class_name) const;
-        std::string toRepr(const std::string& class_name) const;
+        std::string toString(const std::string& class_name, int group=0) const;
+        std::string toRepr(const std::string& class_name, int group=0) const;
 
 #ifdef CPP11
         /** Returns a deep copy of the class (or subclass)
