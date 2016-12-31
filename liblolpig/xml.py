@@ -541,6 +541,10 @@ class XmlParser:
 
         py_name = match.groups()[0]
         py_doc = txt[match.span()[1]:].strip()
-        if py_doc.endswith(")"):
-            py_doc = py_doc[:-1]
-        return py_name, py_doc.strip()
+        while py_doc.endswith(")"):
+            py_doc = py_doc[:-1].strip()
+        while py_doc.startswith("("):
+            py_doc = py_doc[1:].strip()
+        from .renderer import change_text_indent
+        py_doc = change_text_indent(py_doc, 0)
+        return py_name, py_doc
