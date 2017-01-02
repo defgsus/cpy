@@ -17,12 +17,17 @@ extern "C" {
             num_cols;
 
         void setIdentity(double val=1.);
+        MatrixBase* matrixMultCopy(const double* right, int rows, int cols) const;
+        MatrixBase* matrixMultCopy(MatrixBase* right) const
+            { return matrixMultCopy(right->v, right->num_rows, right->num_cols); }
+        std::string dimensionString() const { return dimensionString(num_rows, num_cols); }
+        static std::string dimensionString(int r, int c);
     };
 
     MatrixBase* new_MatrixBase();
     bool is_MatrixBase(PyObject*);
 
-    MatrixBase* createMatrix(int columns, int rows, double* data = NULL);
+    MatrixBase* createMatrix(int rows, int columns, double* data = NULL);
 
 } // extern "C"
 

@@ -224,6 +224,41 @@ PyObject* mat_transpose(PyObject* self)
 
 
 
+
+LOLPIG_DEF( mat.__mul__, )
+PyObject* mat_mul__(PyObject* left, PyObject* right)
+{
+    if (is_MatrixBase(left))
+    {
+        MatrixBase* mleft = reinterpret_cast<MatrixBase*>(left);
+
+        if (is_MatrixBase(right))
+        {
+            MatrixBase* mright = reinterpret_cast<MatrixBase*>(right);
+            return reinterpret_cast<PyObject*>(mleft->matrixMultCopy(mright));
+        }
+        else
+            return left->ob_type->tp_base->tp_as_number->nb_multiply(left, right);
+    }
+    else if (is_MatrixBase(right))
+    {
+        MatrixBase* mright = reinterpret_cast<MatrixBase*>(left);
+
+        if (is_MatrixBase(left))
+        {
+            MatrixBase* mleft = reinterpret_cast<MatrixBase*>(right);
+            return reinterpret_cast<PyObject*>(mleft->matrixMultCopy(mright));
+        }
+        else
+            return right->ob_type->tp_base->tp_as_number->nb_multiply(right, left);
+    }
+    setPythonError(PyExc_TypeError, SStream() << "Invalid operands for multiplication, "
+                    << typeName(left) << " and " << typeName(right));
+    return NULL;
+}
+
+
+
 // -------------- value copying ----------------
 
 LOLPIG_DEF( mat.transposed, (
@@ -233,7 +268,7 @@ LOLPIG_DEF( mat.transposed, (
 PyObject* mat_transposed(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-    MatrixBase* ret = createMatrix(vec->num_rows, vec->num_cols);
+    MatrixBase* ret = createMatrix(vec->num_cols, vec->num_rows);
 
     for (int c=0; c<vec->num_cols; ++c)
     for (int r=0; r<vec->num_rows; ++r)
@@ -246,7 +281,7 @@ PyObject* mat_transposed(PyObject* self)
 
 // ---------------------- helper ------------------
 
-MatrixBase* createMatrix(int columns, int rows, double *data)
+MatrixBase* createMatrix(int rows, int columns, double *data)
 {
     MatrixBase* vec = NULL;
     if (columns == rows) switch (rows)
@@ -280,8 +315,41 @@ void MatrixBase::setIdentity(double val)
     }
 }
 
+std::string MatrixBase::dimensionString(int r, int c)
+{
+    return SStream() << r << "x" << c;
+}
 
+/* r1xc1 * c1xc2 = r1*c2
+ *
+    1 3 5     a d     1a+3b+5c 1d+3e+5f
+    2 4 6  x  b e  =  2a+4b+6c 2d+5e+6f
+              c f
+*/
+MatrixBase* MatrixBase::matrixMultCopy(const double* v, int rows, int cols) const
+{
+    if (num_cols != rows)
+    {
+        setPythonError(PyExc_TypeError, SStream()
+            << "Can not matrix-multiply " << dimensionString()
+            << " with " << dimensionString(rows, cols)
+            << ", " << num_cols << " != " << rows
+        );
+        return NULL;
+    }
 
+    MatrixBase* ret = createMatrix(num_rows, cols);
+
+    for (int row=0; row<num_rows; ++row)
+    for (int col=0; col<cols; ++col)
+    {
+        double s = 0.;
+        for (int i=0; i<num_cols; ++i)
+            s += this->v[i * num_rows + row] * v[col * rows + i];
+        ret->v[col * num_rows + row] = s;
+    }
+    return ret;
+}
 
 } // extern "C"
 
