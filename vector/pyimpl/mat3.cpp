@@ -1,4 +1,5 @@
 #include "mat_base.h"
+#include "vector_math.h"
 
 using namespace PyUtils;
 
@@ -78,16 +79,55 @@ PyObject* mat3_set_rotate_x(PyObject* self, PyObject *obj)
     if (!expectFromPython(obj, &degree))
         return NULL;
     Matrix33* mat = reinterpret_cast<Matrix33*>(self);
-    degree *= DEG_TO_TWO_PI;
-    double  sa = std::sin(degree), ca = std::cos(degree);
-    mat->setIdentity();
-    mat->v[4] = ca;
-    mat->v[5] = sa;
-    mat->v[7] = -sa;
-    mat->v[8] = ca;
-
+    VEC::mat3_set_rotate_x_deg(mat->v, degree);
     Py_RETURN_SELF;
 }
+
+
+// -------------- transformation mult ----------------------
+
+LOLPIG_DEF(mat3.rotate_x, (
+        rotate_x(degree) -> self
+        Adds a rotation to the current matrix, INPLACE
+        >>> mat3().rotate_x(90).round()
+        mat3(1,0,0, 0,0,1, 0,-1,0)
+        ))
+PyObject* mat3_rotate_x(PyObject* self, PyObject *obj)
+{
+    double degree;
+    if (!expectFromPython(obj, &degree))
+       return NULL;
+    Matrix33* mat = reinterpret_cast<Matrix33*>(self);
+    double v[9];
+    VEC::mat3_set_rotate_x_deg(v, degree);
+    VEC::matnn_multiply_inplace(mat->v, v, 3);
+    Py_RETURN_SELF;
+}
+
+
+
+
+// -------------- transformation mult copy ----------------------
+
+LOLPIG_DEF(mat3.rotated_x, (
+        rotated_x(degree) -> mat3
+        Returns a rotated matrix
+        >>> mat3().rotated_x(90).rounded()
+        mat3(1,0,0, 0,0,1, 0,-1,0)
+        ))
+PyObject* mat3_rotated_x(PyObject* self, PyObject *obj)
+{
+    double degree;
+    if (!expectFromPython(obj, &degree))
+       return NULL;
+    Matrix33* mat = reinterpret_cast<Matrix33*>(self);
+    Matrix33* ret = reinterpret_cast<Matrix33*>(mat->copy());
+    double v[9];
+    VEC::mat3_set_rotate_x_deg(v, degree);
+    VEC::matnn_multiply(ret->v, mat->v, v, 3);
+    return reinterpret_cast<PyObject*>(ret);
+}
+
 
 } // extern "C"
 

@@ -240,12 +240,6 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
 #endif
 }
 
-LOLPIG_DEF( test, )
-PyObject* test_foo(PyObject*, PyObject* args)
-{
-    PYVEC_DEBUG(typeName(args, true));
-    Py_RETURN_NONE;
-}
 
 LOLPIG_DEF( vec.__pow__, (
     pow(seq[, seq]) -> vec
@@ -625,7 +619,8 @@ void VectorBase::unary_op_inplace(std::function<double(double)> op) const
 
 std::string VectorBase::toString(const std::string& name, int group) const
 {
-    if (!group && this->len > 5)
+    // auto square-matrix formatting
+    if (!group && this->len >= 9)
         if (double a = std::sqrt(this->len))
             if (a == std::floor(a))
                 group = a;

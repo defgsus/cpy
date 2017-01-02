@@ -20,7 +20,8 @@ HEADERS += \
     vec_module.h \ 
     pyimpl/vec_base.h \
     pyimpl/mat_base.h \
-    py_utils.h
+    py_utils.h \
+    pyimpl/vector_math.h
 
 SOURCES += \
     main.cpp \

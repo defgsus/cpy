@@ -30,10 +30,6 @@ extern "C" {
 VectorBase* createVector(int len, const double* init = NULL, int stride=1);
 VectorBase* createVector(double x, double y, double z);
 
-static const double PI = 3.14159265;
-static const double TWO_PI = PI * 2.;
-static const double DEG_TO_TWO_PI = PI / 180.;
-
 
 extern "C" {
 
@@ -47,7 +43,10 @@ extern "C" {
         void alloc(int len);
         void dealloc();
         void set(double val);
-        /** Returns a copy of the class (or subclass) without v alloced */
+        /** Returns a copy of the class (or subclass).
+            The vector will have the same length
+            (and same rows/columns for matrices)
+            and v will alloced but not initialized. */
         VectorBase* copyClass() const;
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;

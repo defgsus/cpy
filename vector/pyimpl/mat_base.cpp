@@ -1,4 +1,5 @@
 #include "mat_base.h"
+#include "vector_math.h"
 #include <vector>
 #include <iomanip>
 
@@ -80,14 +81,7 @@ LOLPIG_DEF( mat.trace, (
 PyObject* mat_trace(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-    double s = 0.;
-    for (int i=0; i<vec->num_rows; ++i)
-    {
-        int idx = i * (1+vec->num_rows);
-        if (idx < vec->len)
-            s += vec->v[idx];
-    }
-    return toPython(s);
+    return toPython(VEC::mat_trace(vec->v, vec->num_rows, vec->num_cols));
 }
 
 LOLPIG_DEF( mat.column, (
@@ -149,13 +143,9 @@ PyObject* mat_rows(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
 
-    //double v[vec->num_cols];
     PyObject* ret = PyList_New(vec->num_rows);
     for (int i=0; i<vec->num_rows; ++i)
     {
-        //for (int j=0; j<vec->num_cols; ++j)
-        //    v[j] = vec->v[j*vec->num_rows+i];
-        //VectorBase* ve = createVector(vec->num_cols, v);
         VectorBase* ve = createVector(vec->num_cols, &vec->v[i], vec->num_rows);
         PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(ve));
     }
@@ -172,9 +162,12 @@ LOLPIG_DEF( mat.set_identity, (
 PyObject* mat_set_identity(PyObject* self, PyObject* args)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-    args = removeArgumentTuple(args);
     double i=1.;
-    fromPython(args, &i);
+    if (!isEmpty(args))
+    {
+        if (!expectFromPython(removeArgumentTuple(args), &i))
+            return NULL;
+    }
     vec->setIdentity(i);
     Py_RETURN_SELF;
 }
@@ -186,16 +179,8 @@ LOLPIG_DEF( mat.transpose, (
 PyObject* mat_transpose(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
-
-    std::vector<double> tmp(vec->len);
-    for (int i=0; i<vec->len; ++i)
-        tmp[i] = vec->v[i];
-
-    for (int c=0; c<vec->num_cols; ++c)
-    for (int r=0; r<vec->num_rows; ++r)
-        vec->v[r*vec->num_cols+c] = tmp[c*vec->num_rows+r];
+    VEC::mat_transpose_inplace(vec->v, vec->num_rows, vec->num_cols);
     std::swap(vec->num_rows, vec->num_cols);
-
     Py_RETURN_SELF;
 }
 
@@ -282,11 +267,7 @@ PyObject* mat_transposed(PyObject* self)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
     MatrixBase* ret = createMatrix(vec->num_cols, vec->num_rows);
-
-    for (int c=0; c<vec->num_cols; ++c)
-    for (int r=0; r<vec->num_rows; ++r)
-        ret->v[r*vec->num_cols+c] = vec->v[c*vec->num_rows+r];
-
+    VEC::mat_transpose(ret->v, vec->v, vec->num_rows, vec->num_cols);
     return reinterpret_cast<PyObject*>(ret);
 }
 
@@ -311,22 +292,14 @@ MatrixBase* createMatrix(int rows, int columns, double *data)
     vec->num_rows = rows;
 
     if (data)
-        for (int i=0; i<vec->len; ++i)
-            vec->v[i] = *data++;
+        VEC::vec_copy(vec->v, data, vec->len);
 
     return vec;
 }
 
 void MatrixBase::setIdentity(double val)
 {
-    set(0);
-    int sm = std::min(num_rows, num_cols);
-    for (int i=0; i<sm; ++i)
-    {
-        int idx = i*(num_rows+1);
-        if (idx < len)
-            v[idx] = val;
-    }
+    VEC::mat_set_identity(this->v, this->num_rows, this->num_cols, val);
 }
 
 std::string MatrixBase::dimensionString(int r, int c)
@@ -334,12 +307,6 @@ std::string MatrixBase::dimensionString(int r, int c)
     return SStream() << r << "x" << c;
 }
 
-/* r1xc1 * c1xc2 = r1*c2
- *
-    1 3 5     a d     1a+3b+5c 1d+3e+5f
-    2 4 6  x  b e  =  2a+4b+6c 2d+5e+6f
-              c f
-*/
 MatrixBase* MatrixBase::matrixMultCopy(const double* v, int rows, int cols) const
 {
     if (num_cols != rows)
@@ -358,14 +325,7 @@ MatrixBase* MatrixBase::matrixMultCopy(const double* v, int rows, int cols) cons
     else
         ret = reinterpret_cast<MatrixBase*>(createVector(num_rows));
 
-    for (int row=0; row<num_rows; ++row)
-    for (int col=0; col<cols; ++col)
-    {
-        double s = 0.;
-        for (int i=0; i<num_cols; ++i)
-            s += this->v[i * num_rows + row] * v[col * rows + i];
-        ret->v[col * num_rows + row] = s;
-    }
+    VEC::mat_multiply(ret->v, this->v, this->num_rows, this->num_cols, v, cols);
     return ret;
 }
 
