@@ -11,33 +11,31 @@
 
 #include "../py_utils.h"
 
-#define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
-
+#if 0
+#   define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
+#else
+#   define PYVEC_DEBUG(unused__) { }
+#endif
 
 namespace MO {
 namespace PYTHON {
 
 extern "C" {
-
     struct VectorBase;
-
-    /** Create the appropriate vector instance.
-        Values from @p init will be written to vector, if not NULL. */
-    VectorBase* createVector(int len, const double* init = NULL, int stride=1);
+}
 
 
-    /** iterator for vec classes */
-    LOLPIG_DEF(_vec_iter, Vector iterator)
-    struct VectorIter {
-        PyObject_HEAD
-        VectorBase* vec;
-        int iter;
+/** Create the appropriate vector instance.
+    Values from @p init will be copied to vector, if not NULL. */
+VectorBase* createVector(int len, const double* init = NULL, int stride=1);
+VectorBase* createVector(double x, double y, double z);
 
-        std::string toString() const;
-    };
+static const double PI = 3.14159265;
+static const double TWO_PI = PI * 2.;
+static const double DEG_TO_TWO_PI = PI / 180.;
 
-    VectorIter* new_VectorIter();
-    bool is_VectorIter(PyObject*);
+
+extern "C" {
 
     /** Base vector class and variable length vector */
     LOLPIG_DEF(vec, The basic vector class)
@@ -49,6 +47,8 @@ extern "C" {
         void alloc(int len);
         void dealloc();
         void set(double val);
+        /** Returns a copy of the class (or subclass) without v alloced */
+        VectorBase* copyClass() const;
         /** Returns a deep copy of the class (or subclass) */
         VectorBase* copy() const;
         /** Text repr of vector as in constructor call. */
@@ -78,7 +78,8 @@ extern "C" {
          *        If zero, max_len defaults to maximum possible!
          * @param default_len If not zero, a minimum length v should have.
          *        Scalars fill this whole range, sequences will be zero-padded to fit.
-         * @return The actual number of floats read from python argument.
+         * @return The actual number of floats read from python argument,
+         *         or -1 on error.
          */
         static int parseSequence(PyObject* seq, double* v=NULL,
                                  int max_len=0, int default_len=0);
@@ -89,12 +90,28 @@ extern "C" {
     VectorBase* new_VectorBase();
     bool is_VectorBase(PyObject*);
 
+
+
     LOLPIG_DEF(vec3, 3-dimensional vector class)
     struct Vector3 : public VectorBase { };
 
     Vector3* new_Vector3();
     bool is_Vector3(PyObject*);
 
+
+
+    /** iterator for vec classes */
+    LOLPIG_DEF(_vec_iter, Vector iterator)
+    struct VectorIter {
+        PyObject_HEAD
+        VectorBase* vec;
+        int iter;
+
+        std::string toString() const;
+    };
+
+    VectorIter* new_VectorIter();
+    bool is_VectorIter(PyObject*);
 
 } // extern "C"
 	

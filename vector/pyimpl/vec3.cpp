@@ -7,22 +7,13 @@ namespace PYTHON {
 
 extern "C" {
 
-Vector3* copy_Vector3(Vector3* src)
-{
-    Vector3* dst = new_Vector3();
-    dst->len = src->len;
-    for (int i=0; i<src->len; ++i)
-        dst->v[i] = src->v[i];
-    return dst;
-}
-
 LOLPIG_DEF( vec3.__new__, )
 PyObject* vec3_new(struct _typeobject* type, PyObject* args, PyObject* )
 {
     Vector3* vec = PyObject_NEW(Vector3, type);
     vec->alloc(3);
     int len = VectorBase::parseSequence(args, vec->v, vec->len);
-    if (len==0)
+    if (len<0)
     {
         Py_DECREF(vec);
         return NULL;

@@ -22,12 +22,23 @@ extern "C" {
             { return matrixMultCopy(right->v, right->num_rows, right->num_cols); }
         std::string dimensionString() const { return dimensionString(num_rows, num_cols); }
         static std::string dimensionString(int r, int c);
+        static bool getSizeFromArgs(PyObject* args, PyObject* kwargs, int* rows, int*cols);
+        static std::string matrixString(const double* v, int rows, int cols,
+                                        const std::string& name="mat");
     };
 
     MatrixBase* new_MatrixBase();
     bool is_MatrixBase(PyObject*);
 
     MatrixBase* createMatrix(int rows, int columns, double* data = NULL);
+
+
+    LOLPIG_DEF(mat3, A classic 3x3 rotation matrix)
+    struct Matrix33 : MatrixBase { };
+
+    Matrix33* new_Matrix33();
+    bool is_Matrix33(PyObject*);
+
 
 } // extern "C"
 

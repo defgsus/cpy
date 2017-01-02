@@ -28,13 +28,15 @@ SOURCES += \
     pyimpl/mat_base.cpp \
     pyimpl/vec3.cpp \
     pyimpl/vec_base.cpp \
-    vec_module.cpp
+    vec_module.cpp \
+    pyimpl/mat3.cpp
 
 
 python_modfiles = \
     $$PWD/pyimpl/vec_base.cpp \
+    $$PWD/pyimpl/vec3.cpp \
     $$PWD/pyimpl/mat_base.cpp \
-    $$PWD/pyimpl/vec3.cpp
+    $$PWD/pyimpl/mat3.cpp \
 
 pymod.target = vec_module.h
 pymod.commands = /home/defgsus/prog/python/dev/lolpig/lolpig.py -i $$python_modfiles -o $$PWD/vec_module -m vec -n MOP

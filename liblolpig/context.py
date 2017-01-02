@@ -287,8 +287,8 @@ class Context:
         for c in self.classes:
             print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases])
                   + " (" + c.key() + ")")
-            for f in c.methods:
-                print("    " + f.py_name + " " + str(f.get_function_type()) + " (" + f.key() + ")")
+            #for f in c.methods:
+            #    print("    " + f.py_name + " " + str(f.get_function_type()) + " (" + f.key() + ")")
 
     def finalize(self):
         for f in self.functions:
@@ -317,11 +317,11 @@ class Context:
     def _sort_classes_by_bases(self):
         srt = []
         for c in self.classes:
-            i = len(srt)-1
-            while i > 0:
+            i = 0
+            while i < len(srt):
                 if srt[i].has_base(c):
                     break
-                i -= 1
+                i += 1
             srt.insert(i, c)
         self.classes = srt
 

@@ -12,7 +12,7 @@ and generate the module code automatically. For example:
 ```C++
 // def.cpp
 
-CPY_DEF(add,
+LOLPIG_DEF(add,
     Adds two numbers, returns float.
     Multi-line doc-strings, yeah!
 )

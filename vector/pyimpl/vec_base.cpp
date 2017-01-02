@@ -1,4 +1,5 @@
 #include "vec_base.h"
+#include "mat_base.h"
 
 #ifdef CPP11
 #   include <limits>
@@ -16,12 +17,16 @@ LOLPIG_DEF( vec.__new__, )
 PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
 {
     int len = VectorBase::parseSequence(args);
-    if (len==0)
+    if (len<0)
         return NULL;
 
     VectorBase* vec = PyObject_NEW(VectorBase, type);
     vec->alloc(len);
-    VectorBase::parseSequence(args, vec->v, len, 1);
+    if (VectorBase::parseSequence(args, vec->v, len, 1) < 0)
+    {
+        Py_DECREF(vec);
+        return NULL;
+    }
 
     return reinterpret_cast<PyObject*>(vec);
 }
@@ -256,7 +261,7 @@ PyObject* vec_pow__(PyObject* self, PyObject* args, PyObject* /*kwargs*/)
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     // exp only
     double e[vec->len];
-    if (!VectorBase::parseSequence(args, e, vec->len))
+    if (VectorBase::parseSequence(args, e, vec->len) < 0)
         return NULL;
 #ifdef CPP11
     double* p=e;
@@ -443,7 +448,7 @@ PyObject* vec_distance(PyObject* self, PyObject* args)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     double v[vec->len];
-    if (!VectorBase::parseSequence(args, v, vec->len))
+    if (VectorBase::parseSequence(args, v, vec->len) < 0)
         return NULL;
     double l = 0.;
     for (int i=0; i<vec->len; ++i)
@@ -460,7 +465,7 @@ PyObject* vec_distance_squared(PyObject* self, PyObject* args)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     double v[vec->len];
-    if (!VectorBase::parseSequence(args, v, vec->len))
+    if (VectorBase::parseSequence(args, v, vec->len) < 0)
         return NULL;
     double l = 0.;
     for (int i=0; i<vec->len; ++i)
@@ -478,7 +483,7 @@ PyObject* vec_dot(PyObject* self, PyObject* args)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     double v[vec->len];
-    if (!VectorBase::parseSequence(args, v, vec->len))
+    if (VectorBase::parseSequence(args, v, vec->len) < 0)
         return NULL;
     double l = 0.;
     for (int i=0; i<vec->len; ++i)
@@ -524,7 +529,41 @@ PyObject* vec_normalized(PyObject* self)
 
 
 
+// -------------------- C constructors -----------------------
+
+} // extern "C"
+
+VectorBase* createVector(int len, const double* v, int stride)
+{
+    VectorBase* vec;
+    switch (len)
+    {
+        default: vec = new_VectorBase(); break;
+        case 3: vec = reinterpret_cast<VectorBase*>(new_Vector3()); break;
+    }
+    vec->alloc(len);
+    if (v)
+        for (int i=0; i<len; ++i)
+            vec->v[i] = v[i*stride];
+    return vec;
+}
+
+VectorBase* createVector(double x, double y, double z)
+{
+    VectorBase* vec = createVector(3);
+    vec->v[0] = x;
+    vec->v[1] = y;
+    vec->v[2] = z;
+    return vec;
+}
+
+
+
+extern "C" {
+
 // ---------------------- helper -----------------------------
+
+
 
 void VectorBase::alloc(int len)
 {
@@ -547,35 +586,31 @@ void VectorBase::set(double val)
         v[i] = val;
 }
 
-VectorBase* VectorBase::copy() const
+VectorBase* VectorBase::copyClass() const
 {
     VectorBase* vec = PyObject_New(VectorBase, this->ob_base.ob_type);
     vec->alloc(this->len);
+    if (is_MatrixBase(const_cast<PyObject*>(reinterpret_cast<const PyObject*>(this))))
+    {
+        reinterpret_cast<MatrixBase*>(vec)->num_rows = reinterpret_cast<const MatrixBase*>(this)->num_rows;
+        reinterpret_cast<MatrixBase*>(vec)->num_cols = reinterpret_cast<const MatrixBase*>(this)->num_cols;
+    }
+    return vec;
+}
+
+VectorBase* VectorBase::copy() const
+{
+    VectorBase* vec = this->copyClass();
     for (int i=0; i<this->len; ++i)
         vec->v[i] = this->v[i];
     return vec;
 }
 
-VectorBase* createVector(int len, const double* v, int stride)
-{
-    VectorBase* vec;
-    switch (len)
-    {
-        default: vec = new_VectorBase(); break;
-        case 3: vec = reinterpret_cast<VectorBase*>(new_Vector3()); break;
-    }
-    vec->alloc(len);
-    if (v)
-        for (int i=0; i<len; ++i)
-            vec->v[i] = v[i*stride];
-    return vec;
-}
 
 #ifdef CPP11
 VectorBase* VectorBase::unary_op_copy(std::function<double(double)> op) const
 {
-    VectorBase* vec = PyObject_New(VectorBase, this->ob_base.ob_type);
-    vec->alloc(this->len);
+    VectorBase* vec = this->copyClass();
     for (int i=0; i<this->len; ++i)
         vec->v[i] = op(this->v[i]);
     return vec;
@@ -685,7 +720,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
     {
         setPythonError(PyExc_TypeError, SStream() << "expected scalar or sequence, got "
                        << typeName(seq));
-        return 0;
+        return -1;
     }
     // scalar value again
     if (PySequence_Length(seq) == 1)
@@ -702,7 +737,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
     // parse any float/sequence combination
     int write = 0;
     if (!parseSequencePart(seq, &write, max_len, v))
-        return 0;
+        return -1;
 
     // zero rest
     if (v)
