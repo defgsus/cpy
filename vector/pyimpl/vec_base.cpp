@@ -1,3 +1,4 @@
+#include <vector>
 #include "vec_base.h"
 #include "mat_base.h"
 
@@ -193,6 +194,92 @@ void veciter_dealloc(PyObject* self)
     self->ob_type->tp_free(self);
 }
 
+// ------------ attributes ----------------
+
+LOLPIG_DEF( vec.__getattro__, (
+        Swizzle access
+        ))
+PyObject* vec_getattro(PyObject* self, PyObject* name)
+{
+    std::string s;
+    if (fromPython(name, &s))
+    {
+        VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+        std::vector<double> ret;
+#ifdef CPP11
+        for (auto c : s)
+        {
+            int idx = -1;
+            if (c == 'x' || c == 'r' || c == 's')
+                idx = 0;
+            else if (c == 'y' || c == 'g' || c == 't')
+                idx = 1;
+            else if (c == 'z' || c == 'b' || c == 'p')
+                idx = 2;
+            else if (c == 'w' || c == 'a' || c == 'q')
+                idx = 3;
+
+            if (idx < 0 || idx >= vec->len)
+                return PyObject_GenericGetAttr(self, name);
+            ret.push_back(vec->v[idx]);
+        }
+        if (ret.size() == 1)
+            toPython(ret[0]);
+        return reinterpret_cast<PyObject*>(createVector(ret.size(), ret.data()));
+#endif
+    }
+    return PyObject_GenericGetAttr(self, name);
+}
+
+LOLPIG_DEF( vec.__setattro__, (
+        Swizzle write access
+        ))
+int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
+{
+    std::string s;
+    if (fromPython(name, &s))
+    {
+        VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+        std::vector<int> idxs;
+#ifdef CPP11
+        for (auto c : s)
+        {
+            int idx = -1;
+            if (c == 'x' || c == 'r' || c == 's')
+                idx = 0;
+            else if (c == 'y' || c == 'g' || c == 't')
+                idx = 1;
+            else if (c == 'z' || c == 'b' || c == 'p')
+                idx = 2;
+            else if (c == 'w' || c == 'a' || c == 'q')
+                idx = 3;
+
+            if (idx < 0 || idx >= vec->len)
+                return PyObject_GenericSetAttr(self, name, args);
+            for (auto i : idxs)
+                if (idx == i)
+                    return PyObject_GenericSetAttr(self, name, args);
+            idxs.push_back(idx);
+        }
+        double v[idxs.size()+1];
+        int len = VectorBase::parseSequence(args, v, idxs.size()+1);
+        if (len < 0)
+            return -1;
+        if ((size_t)len != idxs.size())
+        {
+            setPythonError(PyExc_TypeError, SStream()
+                           << "Expected sequence of length " << idxs.size() << ", got"
+                           << len);
+            return -1;
+        }
+        double* ptr=v;
+        for (auto idx : idxs)
+            vec->v[idx] = *ptr++;
+        return 0;
+#endif
+    }
+    return PyObject_GenericSetAttr(self, name, args);
+}
 
 
 // ------------ splitting -----------------

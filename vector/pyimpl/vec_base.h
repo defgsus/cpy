@@ -17,6 +17,8 @@
 #   define PYVEC_DEBUG(unused__) { }
 #endif
 
+#define PRINT(arg__) std::cout << arg__ << std::endl;
+
 namespace MO {
 namespace PYTHON {
 

@@ -236,6 +236,8 @@ TYPE_FUNCS = [
     ("__hash__",        "tp_hash"),
     ("__getattr__",     "tp_getattr"),
     ("__setattr__",     "tp_setattr"),
+    ("__getattro__",    "tp_getattro"),
+    ("__setattro__",    "tp_setattro"),
     ("__call__",        "tp_call"),
     ("__iter__",        "tp_iter"),
     ("__next__",        "tp_iternext"),
@@ -249,7 +251,7 @@ ALL_FUNCS = TYPE_FUNCS + SEQUENCE_FUNCS + NUMBER_FUNCS
 
 SPECIAL_FUNCS = [
     ("__floor__",       "unaryfunc"),
-    ("__cleil__",       "unaryfunc"),
+    ("__ceil__",        "unaryfunc"),
     ("__complex__",     "unaryfunc"),
 ]
 

@@ -25,10 +25,26 @@ class TestVec(TestCase):
         self.assertTrue(  vec3(1) == (1,1,1) )
         self.assertFalse( vec3(1) == (1, 1) )
 
-    def _test_properties(self):
-        self.assertEqual(vec3(1,2,3).x, 1)
-        self.assertEqual(vec3(1,2,3).y, 2)
-        self.assertEqual(vec3(1,2,3).z, 3)
+    def test_attributes(self):
+        self.assertEqual(1, vec(1,2,3,4).x)
+        self.assertEqual(2, vec(1,2,3,4).y)
+        self.assertEqual(3, vec(1,2,3,4).z)
+        self.assertEqual(4, vec(1,2,3,4).w)
+        self.assertEqual(1, vec(1,2,3,4).r)
+        self.assertEqual(2, vec(1,2,3,4).g)
+        self.assertEqual(3, vec(1,2,3,4).b)
+        self.assertEqual(4, vec(1,2,3,4).a)
+        self.assertEqual([1, 2], vec(1, 2, 3).xy)
+        self.assertEqual([3, 2, 1], vec(1, 2, 3).zyx)
+        self.assertEqual([3, 2, 1], vec(1, 2, 3).bgr)
+        self.assertEqual([4, 3, 2, 1], vec(1, 2, 3, 4).abgr)
+        self.assertEqual([4, 3, 2, 1], vec(1, 2, 3, 4).wzyx)
+        self.assertEqual([1, 2, 3, 4], vec(1, 2, 3, 4).stpq)
+        self.assertEqual([1,2,3,1,2,3,1,2,3], vec(1, 2, 3).xyzxyzxyz)
+        with self.assertRaises(AttributeError):
+            a = vec(1,2,3).k
+
+    def test_attributes_set(self):
         a = vec3()
         a.x = 5
         self.assertEqual((5,0,0), a)
@@ -36,6 +52,23 @@ class TestVec(TestCase):
         self.assertEqual((5, 6, 0), a)
         a.z = 7
         self.assertEqual((5, 6, 7), a)
+        a.xy = [8,9]
+        self.assertEqual((8, 9, 7), a)
+        a.zyx = [10,11,12]
+        self.assertEqual((12,11,10), a)
+        with self.assertRaises(AttributeError):
+            a.w = 1.
+        with self.assertRaises(AttributeError):
+            a.xx = [1,2]
+        with self.assertRaises(TypeError):
+            a.xy = [1]
+        with self.assertRaises(TypeError):
+            a.xyz = [1,2,3,4]
+        a = vec(0,0,0,0)
+        a.rgba = [1,2,3,4]
+        self.assertEqual((1,2,3,4), a)
+        a.stpq = [5,6,7,8]
+        self.assertEqual((5,6,7,8), a)
 
     def test_getitem(self):
         a = vec3(1,2,3)
@@ -89,6 +122,11 @@ class TestVec(TestCase):
             "a" in vec(1,2,3)
         with self.assertRaises(TypeError):
             {"a":1} in vec(1,2,3)
+
+    def test_len(self):
+        self.assertEqual(0, len(vec()))
+        self.assertEqual(1, len(vec(1)))
+        self.assertEqual(4, len(vec(1,2,3,4)))
 
     def test_iter(self):
         self.assertEqual([1,2,3], [x for x in vec(1,2,3)])

@@ -576,8 +576,8 @@ class Renderer:
             "tp_name": '"%s.%s"' % (self.context.module_name, cls.py_name),
             "tp_basicsize": str(cls.struct_size),
             "tp_dealloc": cls.class_dealloc_func_name,
-            "tp_getattro": "PyObject_GenericGetAttr",
-            "tp_setattro": "PyObject_GenericSetAttr",
+            #"tp_getattro": "PyObject_GenericGetAttr",
+            #"tp_setattro": "PyObject_GenericSetAttr",
             "tp_flags": "Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE",
             "tp_doc": cls.doc_string_name,
             "tp_new": cls.class_new_func_name
