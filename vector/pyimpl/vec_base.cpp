@@ -83,14 +83,39 @@ PyObject* vec_str(PyObject* self)
 LOLPIG_DEF( vec.__contains__, )
 int vec_contains(PyObject* self, PyObject* obj)
 {
-    double v;
-    if (!fromPython(obj, &v))
-        return 0;
-
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    for (int i=0; i<vec->len; ++i)
-        if (vec->v[i] == v)
+
+    // scalar in vec
+    double s;
+    if (fromPython(obj, &s))
+    {
+        if (!vec->len)
+            return 0;
+        for (int i=0; i<vec->len; ++i)
+            if (vec->v[i] == s)
+                return 1;
+        return 0;
+    }
+    // seq in vec
+    double v[vec->len+1];
+    int len = VectorBase::parseSequence(obj, v, vec->len+1);
+    if (len < 0)
+    {
+        setPythonError(PyExc_TypeError, SStream() << "Expected scalar or sequence, got "
+                       << typeName(obj));
+        return -1;
+    }
+    if (!vec->len || len > vec->len)
+        return 0;
+    for (int i=0; i<=vec->len-len; ++i)
+    {
+        bool c = true;
+        for (int j=0; j<len; ++j)
+            if (vec->v[i+j] != v[j])
+                { c = false; break; }
+        if (c)
             return 1;
+    }
     return 0;
 }
 
@@ -109,7 +134,7 @@ int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     if (!checkIndex(idx, vec->len))
         return -1;
-    if (!fromPython(val, &vec->v[idx]))
+    if (!expectFromPython(val, &vec->v[idx]))
         return -1;
     return 0;
 }

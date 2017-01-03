@@ -68,6 +68,27 @@ class TestVec(TestCase):
             a[3] = 1
         with self.assertRaises(IndexError):
             a[-4] = 1
+        with self.assertRaises(TypeError):
+            a[0] = "a"
+        with self.assertRaises(TypeError):
+            a[0] = {1}
+        with self.assertRaises(TypeError):
+            a[0] = {"x":1}
+
+    def test_contains(self):
+        self.assertEqual(True,  1 in vec(1,2,3))
+        self.assertEqual(True,  2 in vec(1,2,3))
+        self.assertEqual(True,  3 in vec(1,2,3))
+        self.assertEqual(False, 4 in vec(1,2,3))
+        self.assertEqual(False, 0 in vec())
+        self.assertEqual(True,  [1,2] in vec(1,2,3))
+        self.assertEqual(True,  [2,3] in vec(1,2,3))
+        self.assertEqual(True,  [1,2,3] in vec(1,2,3))
+        self.assertEqual(False, [1,3] in vec(1,2,3))
+        with self.assertRaises(TypeError):
+            "a" in vec(1,2,3)
+        with self.assertRaises(TypeError):
+            {"a":1} in vec(1,2,3)
 
     def test_iter(self):
         self.assertEqual([1,2,3], [x for x in vec(1,2,3)])
