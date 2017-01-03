@@ -758,34 +758,47 @@ std::string VectorIter::toString() const
 }
 
 
-bool parseSequencePart(PyObject* seq, int* write, int max_len, double* v)
-{
-    int seq_len = PySequence_Length(seq);
-    int seq_pos = 0;
-    while (*write < max_len && seq_pos < seq_len)
-    {
-        PyObject* item = PySequence_GetItem(seq, seq_pos);
-        if (fromPython(item, v ? &v[*write] : NULL))
-        {
-            ++(*write);
-            ++seq_pos;
-        }
-        else if (PySequence_Check(item))
-        {
-            if (!parseSequencePart(item, write, max_len, v))
-                return false;
-            ++seq_pos;
-        }
-        else
-        {
-            setPythonError(PyExc_TypeError, SStream() << "expected float in sequence, got "
-                           << typeName(item));
-            return false;
-        }
-    }
-    return true;
-}
+namespace {
 
+    bool isValidSequenceType(PyObject* seq)
+    {
+        return PySequence_Check(seq) && !(
+                    PyUnicode_Check(seq)
+                 || PyByteArray_Check(seq)
+                    );
+    }
+
+    bool parseSequencePart(PyObject* seq, int* write, int max_len, double* v)
+    {
+        int seq_len = PySequence_Length(seq);
+        int seq_pos = 0;
+        while (*write < max_len && seq_pos < seq_len)
+        {
+            PyObject* item = PySequence_GetItem(seq, seq_pos);
+            if (fromPython(item, v ? &v[*write] : NULL))
+            {
+                ++(*write);
+                ++seq_pos;
+            }
+            else if (isValidSequenceType(item))
+            {
+                if (!parseSequencePart(item, write, max_len, v))
+                    return false;
+                ++seq_pos;
+            }
+            else
+            {
+                setPythonError(PyExc_TypeError, SStream()
+                               << "expected float in sequence, got "
+                               << typeName(item));
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+}
 
 int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len)
 {
@@ -805,13 +818,14 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
                 v[i] = v[0];
         return 1;
     }
-    if (!PySequence_Check(seq))
+    // otherwise parse any sequence type
+    if (!isValidSequenceType(seq))
     {
         setPythonError(PyExc_TypeError, SStream() << "expected scalar or sequence, got "
                        << typeName(seq));
         return -1;
     }
-    // scalar value again
+    // scalar value in tuple/seq?
     if (PySequence_Length(seq) == 1)
     {
         PyObject* item = PySequence_GetItem(seq, 0);

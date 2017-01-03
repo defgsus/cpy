@@ -13,10 +13,11 @@ class TestVec(TestCase):
         self.assertEqual("vec(1, 2, 3)", str(vec((1,2),3)))
         self.assertEqual("vec(1, 2, 3)", str(vec(1,(2,3))))
         self.assertEqual("vec(1, 2, 3)", str(vec(1,(2,),3)))
-        #with self.assertRaises(TypeError):
-        #    vec3("bla")
-        #with self.assertRaises(TypeError):
-        #    vec3({"x":23})
+        self.assertEqual("vec(1, 2, 3, 4, 5)", str(vec([1,[2,[3,[4,]],5]] )))
+        with self.assertRaises(TypeError):
+            vec3("blab")
+        with self.assertRaises(TypeError):
+            vec3({"x":23})
 
     def test_equal(self):
         self.assertTrue(  vec3(1) == vec3(1) )
@@ -41,8 +42,13 @@ class TestVec(TestCase):
         self.assertEqual(1, a[0])
         self.assertEqual(2, a[1])
         self.assertEqual(3, a[2])
+        self.assertEqual(3, a[-1])
+        self.assertEqual(2, a[-2])
+        self.assertEqual(1, a[-3])
         with self.assertRaises(IndexError):
             a[3]
+        with self.assertRaises(IndexError):
+            a[-4]
 
     def test_setitem(self):
         a = vec(0,0,0)
@@ -52,45 +58,66 @@ class TestVec(TestCase):
         self.assertEqual(vec(1,2,0), a)
         a[2] = 3
         self.assertEqual(vec(1,2,3), a)
+        a[-1] = 4
+        self.assertEqual(vec(1,2,4), a)
+        a[-2] = 5
+        self.assertEqual(vec(1,5,4), a)
+        a[-3] = 6
+        self.assertEqual(vec(6,5,4), a)
         with self.assertRaises(IndexError):
             a[3] = 1
+        with self.assertRaises(IndexError):
+            a[-4] = 1
 
     def test_iter(self):
         self.assertEqual([1,2,3], [x for x in vec(1,2,3)])
         self.assertEqual([3,2,1], [x for x in reversed(vec(1, 2, 3))])
+
+    def test_split(self):
+        self.assertEqual([vec(1,2),vec(3,4)],   vec(1,2,3,4).split(2))
+        self.assertEqual([vec3(1,2,3),vec(4)],  vec(1,2,3,4).split(3))
+        self.assertEqual([vec(1,2,3,4)],        vec(1,2,3,4).split(4))
+
 
     def test_abs(self):
         self.assertEqual(vec3(1,2,3), abs(vec3(-1,-2,-3)))
         self.assertEqual(vec3(1,2,3), abs(vec3( 1,-2, 3)))
 
     def test_floor(self):
-        self.assertEqual(vec3(1,2,3), vec3(1.4,2.5,3.6).floor())
-        self.assertEqual(vec3(-2,-3,-4), vec3(-1.4,-2.5,-3.6).floor())
-        self.assertEqual(vec3(1,2,3), vec3(1.4,2.5,3.6).floored())
-        self.assertEqual(vec3(-2,-3,-4), vec3(-1.4,-2.5,-3.6).floored())
+        self.assertEqual(vec3(1,2,3),       vec3(1.4,2.5,3.6).floor())
+        self.assertEqual(vec3(-2,-3,-4),    vec3(-1.4,-2.5,-3.6).floor())
+        self.assertEqual(vec3(1,2,3),       vec3(1.4,2.5,3.6).floored())
+        self.assertEqual(vec3(-2,-3,-4),    vec3(-1.4,-2.5,-3.6).floored())
 
     def test_round(self):
-        self.assertEqual((0, 0, 1), vec3(0.49, 0.5, 0.51).round())
-        self.assertEqual((0, 0, -1), vec3(-0.49, -0.5, -0.51).round())
-        self.assertEqual((0.5, 0.5, 0.5), vec3(0.49, 0.5, 0.51).round(1))
-        self.assertEqual((-0.5, -0.5, -0.5), vec3(-0.49, -0.5, -0.51).round(1))
+        self.assertEqual((0, 0, 1),         vec3(0.49, 0.5, 0.51).round())
+        self.assertEqual((0, 0, -1),        vec3(-0.49, -0.5, -0.51).round())
+        self.assertEqual((0.5, 0.5, 0.5),   vec3(0.49, 0.5, 0.51).round(1))
+        self.assertEqual((-0.5, -0.5, -0.5),vec3(-0.49, -0.5, -0.51).round(1))
         self.assertEqual((0.12346, 0.12346, 0.12341), vec3(0.123456, 0.123456789, 0.1234123456789).round(5))
-        self.assertEqual((0, 0, 1), vec3(0.49, 0.5, 0.51).rounded())
-        self.assertEqual((0, 0, -1), vec3(-0.49, -0.5, -0.51).rounded())
+        self.assertEqual((0, 0, 1),         vec3(0.49, 0.5, 0.51).rounded())
+        self.assertEqual((0, 0, -1),        vec3(-0.49, -0.5, -0.51).rounded())
 
     def test_add(self):
-        self.assertEqual(vec3(3), vec3(1) + 2)
-        self.assertEqual(vec3(3), vec3(1) + vec3(2))
-        self.assertEqual(vec3(3,5,7), vec3(1,2,3) + vec3(2,3,4))
-        self.assertEqual(vec3(3), vec3(1) + vec3(2))
-        self.assertEqual(vec3(2,3,4), vec3(1) + [1,2,3])
+        self.assertEqual(vec3(3),       vec3(1) + 2)
+        self.assertEqual(vec3(3),       vec3(1) + vec3(2))
+        self.assertEqual(vec3(3,5,7),   vec3(1,2,3) + vec3(2,3,4))
+        self.assertEqual(vec3(3),       vec3(1) + vec3(2))
+        self.assertEqual(vec3(2,3,4),   vec3(1) + [1,2,3])
 
-        self.assertEqual(vec3(3), 2 + vec3(1))
-        self.assertEqual(vec3(2,3,4), [1,2,3] + vec3(1))
+        self.assertEqual(vec3(3),       2 + vec3(1))
+        self.assertEqual(vec3(2,3,4),   [1,2,3] + vec3(1))
 
         with self.assertRaises(TypeError):
             vec3() + [1,2]
+        with self.assertRaises(TypeError):
+            vec3() + [1, 2, 3, 4]
+        with self.assertRaises(TypeError):
+            vec3() + "abc"
+        with self.assertRaises(TypeError):
+            vec3() + {1:2.}
 
+    def test_add_inplace(self):
         a = vec3(1)
         a += 1
         self.assertEqual(vec3(2), a)
@@ -104,6 +131,7 @@ class TestVec(TestCase):
         self.assertEqual(vec3(1), 3 - vec3(2))
         self.assertEqual(vec3(-1,0,1), (1,2,3) - vec3(2))
 
+    def test_sub_inplace(self):
         a = vec3(1)
         a -= 2
         self.assertEqual(vec3(-1), a)
@@ -144,6 +172,7 @@ class TestVec(TestCase):
 
     def test_dot(self):
         self.assertEqual(32, vec3(1,2,3).dot((4,5,6)))
+        self.assertEqual(32, vec3(1,2,3).dot(4,5,6))
         with self.assertRaises(TypeError):
             vec3().dot((1,2))
 
@@ -155,6 +184,7 @@ class TestVec(TestCase):
         self.assertEqual((0,-1,0), vec3(1,0,0).crossed((0,0,1)))
         self.assertEqual((1,0,0), vec3(0,1,0).crossed((0,0,1)))
 
+    # TODO
     def _test_rotate(self):
         self.assertEqual(vec3(1,-3,2), vec3(1,2,3).rotate_x(90).round())
         self.assertEqual(vec3(3,2,-1), vec3(1,2,3).rotate_y(90).round())
@@ -184,11 +214,11 @@ class TestVec(TestCase):
         self.assertEqual(vec3(3,2,-1),
                 vec3(1,2,3).rotated_axis((1,0,0), 90).rotated_axis((0,1,0), 90).rotated_axis((0,0,1), 90).rounded())
 
-    """
+
     def test_op_speed(self):
-        for i in range(100000):
+        for i in range(1000000):
             vec3(1) + vec3(2)
-    """
+
 
 
 

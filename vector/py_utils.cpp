@@ -200,6 +200,12 @@ bool expectFromPythonSequence(PyObject *seq, double *vec, size_t len)
 
 bool checkIndex(Py_ssize_t index, Py_ssize_t len)
 {
+    if (index < 0)
+    {
+        setPythonError(PyExc_IndexError,
+                  SStream() << "Index out of range, " << index << " < 0");
+        return false;
+    }
     if (index >= len)
     {
         setPythonError(PyExc_IndexError,
