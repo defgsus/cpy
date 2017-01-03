@@ -98,6 +98,8 @@ LOLPIG_DEF( vec.__getitem__, )
 PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    if (!checkIndex(idx, vec->len))
+        return NULL;
     return toPython(vec->v[idx]);
 }
 
@@ -105,6 +107,8 @@ LOLPIG_DEF( vec.__setitem__, )
 int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    if (!checkIndex(idx, vec->len))
+        return -1;
     if (!fromPython(val, &vec->v[idx]))
         return -1;
     return 0;
@@ -165,6 +169,7 @@ void veciter_dealloc(PyObject* self)
 }
 
 
+
 // ------------ splitting -----------------
 
 LOLPIG_DEF( vec.split, (
@@ -195,6 +200,68 @@ PyObject* vec_split(PyObject* self, PyObject* obj)
         }
     }
     return ret;
+}
+
+
+
+// --------------- compare --------------------------
+
+LOLPIG_DEF( vec.__eq__, )
+PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    bool cmp = true;
+    double scalar;
+    if (fromPython(arg, &scalar))
+    {
+        switch (op)
+        {
+            case Py_LT: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] >= scalar) { cmp = false; break; } break;
+            case Py_LE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] > scalar) { cmp = false; break; } break;
+            case Py_EQ: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] != scalar) { cmp = false; break; } break;
+            case Py_NE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] == scalar) { cmp = false; break; } break;
+            case Py_GT: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] <= scalar) { cmp = false; break; } break;
+            case Py_GE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] < scalar) { cmp = false; break; } break;
+        }
+        return toPython(cmp);
+    }
+
+    double v[vec->len+1];
+    int len = VectorBase::parseSequence(arg, v, vec->len+1);
+    if (len < 0)
+        return NULL;
+    if (len == vec->len)
+    {
+        switch (op)
+        {
+            case Py_LT: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] >= v[i]) { cmp = false; break; } break;
+            case Py_LE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] > v[i]) { cmp = false; break; } break;
+            case Py_EQ: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] != v[i]) { cmp = false; break; } break;
+            case Py_NE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] == v[i]) { cmp = false; break; } break;
+            case Py_GT: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] <= v[i]) { cmp = false; break; } break;
+            case Py_GE: for (int i=0; i<vec->len; ++i)
+                            if (vec->v[i] < v[i]) { cmp = false; break; } break;
+        }
+        return toPython(cmp);
+    }
+
+    Py_RETURN_FALSE;
+    /*
+    setPythonError(PyExc_TypeError, SStream()
+                    << "Expected scalar or float sequence of length "
+                    << vec->len << " for comparison, got " << len);
+    return NULL;*/
 }
 
 
@@ -352,6 +419,26 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
 }
 
 
+LOLPIG_DEF( vec.__imod__, )
+PyObject* vec_imod(PyObject* self, PyObject* arg)
+{
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+#ifndef GCC_XML
+    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l = std::fmod(l, r); }))
+        return NULL;
+#endif
+    Py_RETURN_SELF;
+}
+
+LOLPIG_DEF( vec.__mod__, )
+PyObject* vec_mod(PyObject* left, PyObject* right)
+{
+#ifndef GCC_XML
+    return VectorBase::binary_op_copy(left, right,
+                                     [](double l, double r){ return std::fmod(l, r); });
+#endif
+}
+
 
 // ----------------- inplace methods -------------------------
 
@@ -476,9 +563,16 @@ LOLPIG_DEF(vec.dot, (
 PyObject* vec_dot(PyObject* self, PyObject* args)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    double v[vec->len];
-    if (VectorBase::parseSequence(args, v, vec->len) < 0)
+    double v[vec->len+1];
+    int len = VectorBase::parseSequence(args, v, vec->len+1);
+    if (len < 0)
         return NULL;
+    if (len != vec->len)
+    {
+        setPythonError(PyExc_TypeError, SStream() << "expected sequence of length "
+                        << vec->len << ", got " << len);
+        return NULL;
+    }
     double l = 0.;
     for (int i=0; i<vec->len; ++i)
         l += v[i] * vec->v[i];

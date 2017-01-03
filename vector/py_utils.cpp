@@ -224,7 +224,12 @@ double pythonRound(double v, int n)
         return std::round(v/n) * n;
     }
     else
-        return std::round(v);
+    {
+        double f = std::floor(v);
+        return v - f != .5
+                    ? std::round(v)
+                    : v < 0. ? f + 1. : f;
+    }
 }
 
 
