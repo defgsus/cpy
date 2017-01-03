@@ -5,11 +5,11 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
+#include "../py_utils.h"
 #ifdef CPP11
 #   include <functional>
 #endif
 
-#include "../py_utils.h"
 
 #if 0
 #   define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
@@ -62,14 +62,15 @@ extern "C" {
         VectorBase* unary_op_copy(std::function<double(double)> op) const;
         /** Applies op to all elements */
         void unary_op_inplace(std::function<double(double)> op) const;
-#endif
         /** Apply right operand to left self */
-        bool binary_op_inplace(PyObject* right, void(*op)(double& l, double r));
+        bool binary_op_inplace(PyObject* right,
+                               std::function<void(double& l, double r)> op);
         /** Apply binary operator.
             Handles any type combination of left and right,
             like vec*scalar, scalar*vec, vec*vec, etc.. */
         static PyObject* binary_op_copy(PyObject* left, PyObject* right,
-                                       double(*op)(double l, double r));
+                                       std::function<double(double l, double r)> op);
+#endif
 
         /** Scans any sequence or sub-sequence into @p v.
          * Eg. It understands: 1 or (1,) or (1,2),3, ((1,2),(3,4)), etc..

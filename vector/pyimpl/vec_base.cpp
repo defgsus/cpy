@@ -521,19 +521,39 @@ LOLPIG_DEF( vec.__itruediv__, )
 PyObject* vec_itruediv(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-#ifndef GCC_XML
-    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l /= r; }))
+    bool zero = false;
+#ifdef CPP11
+    if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
+    {
+        if (r == 0.) { zero = true; return; }
+        l /= r;
+    }))
         return NULL;
 #endif
+    if (zero)
+    {
+        setPythonError(PyExc_ZeroDivisionError, "vector division by zero");
+        return NULL;
+    }
     Py_RETURN_SELF;
 }
 
 LOLPIG_DEF( vec.__truediv__, )
 PyObject* vec_truediv(PyObject* left, PyObject* right)
 {
-#ifndef GCC_XML
-    return VectorBase::binary_op_copy(left, right,
-                                     [](double l, double r){ return l / r; });
+    bool zero = false;
+#ifdef CPP11
+    PyObject* ret = VectorBase::binary_op_copy(left, right, [&zero](double l, double r)
+    {
+        if (r == 0.) { zero = true; return 0.; }
+        return l / r;
+    });
+    if (zero)
+    {
+        setPythonError(PyExc_ZeroDivisionError, "vector division by zero");
+        return NULL;
+    }
+    return ret;
 #endif
 }
 
@@ -542,19 +562,39 @@ LOLPIG_DEF( vec.__imod__, )
 PyObject* vec_imod(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-#ifndef GCC_XML
-    if (!vec->binary_op_inplace(arg, [](double& l, double r){ l = std::fmod(l, r); }))
+    bool zero = false;
+#ifdef CPP11
+    if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
+    {
+        if (r == 0.) { zero = true; return; }
+        l = pythonModulo(l, r);
+    }))
         return NULL;
 #endif
+    if (zero)
+    {
+        setPythonError(PyExc_ZeroDivisionError, "vector modulo with zero value");
+        return NULL;
+    }
     Py_RETURN_SELF;
 }
 
 LOLPIG_DEF( vec.__mod__, )
 PyObject* vec_mod(PyObject* left, PyObject* right)
 {
-#ifndef GCC_XML
-    return VectorBase::binary_op_copy(left, right,
-                                     [](double l, double r){ return std::fmod(l, r); });
+    bool zero = false;
+#ifdef CPP11
+    PyObject* ret = VectorBase::binary_op_copy(left, right, [&zero](double l, double r)
+    {
+        if (r == 0.) { zero = true; return 0.; }
+        return pythonModulo(l, r);
+    });
+    if (zero)
+    {
+        setPythonError(PyExc_ZeroDivisionError, "vector modulo with zero value");
+        return NULL;
+    }
+    return ret;
 #endif
 }
 
@@ -828,6 +868,170 @@ void VectorBase::unary_op_inplace(std::function<double(double)> op) const
         this->v[i] = op(this->v[i]);
 }
 
+bool VectorBase::binary_op_inplace(
+        PyObject* arg, std::function<void(double&, double)> op)
+{
+    double f;
+    if (fromPython(arg, &f))
+    {
+        for (int i=0; i<this->len; ++i)
+            op(this->v[i], f);
+        return true;
+    }
+    if (is_VectorBase(arg))
+    {
+        VectorBase* varg = reinterpret_cast<VectorBase*>(arg);
+        if (this->len != varg->len)
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "expected vector of length " << this->len
+                           << ", got " << varg->len);
+            return false;
+        }
+        for (int i=0; i<this->len; ++i)
+            op(this->v[i], varg->v[i]);
+        return true;
+    }
+    if (PySequence_Check(arg))
+    {
+        if (this->len != PySequence_Length(arg))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "expected vector of length " << this->len
+                           << ", got " << PySequence_Length(arg));
+            return false;
+        }
+        for (int i=0; i<this->len; ++i)
+        {
+            double f;
+            if (!expectFromPython(PySequence_GetItem(arg, i), &f))
+                return false;
+            op(this->v[i], f);
+        }
+        return true;
+    }
+    setPythonError(PyExc_TypeError, SStream() <<
+                   "expected float scalar or sequence, got " << typeName(arg));
+    return false;
+}
+
+PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
+                                     std::function<double(double l, double r)> op)
+{
+    // scalar * vec
+    double val;
+    if (fromPython(left, &val))
+    {
+        if (!is_VectorBase(right))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "unexpected right operand " << typeName(right));
+            return NULL;
+        }
+        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        VectorBase* ret = PyObject_NEW(VectorBase, vright->ob_base.ob_type);
+        ret->alloc(vright->len);
+        for (int i=0; i<vright->len; ++i)
+            ret->v[i] = op(val, vright->v[i]);
+        return reinterpret_cast<PyObject*>(ret);
+    }
+    // list * vec
+    if (!is_VectorBase(left))
+    {
+        if (!is_VectorBase(right))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "unexpected right operand " << typeName(right));
+            return NULL;
+        }
+        if (!PySequence_Check(left))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "unexpected left operand " << typeName(left));
+            return NULL;
+        }
+        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        if (vright->len != PySequence_Length(left))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "expected vector of length " << vright->len
+                           << ", got " << PySequence_Length(left));
+            return NULL;
+        }
+        VectorBase* ret = PyObject_NEW(VectorBase, vright->ob_base.ob_type);
+        ret->alloc(vright->len);
+        for (int i=0; i<vright->len; ++i)
+        {
+            double f;
+            if (!expectFromPython(PySequence_GetItem(left, i), &f))
+            {
+                Py_DECREF(ret);
+                return NULL;
+            }
+            ret->v[i] = op(f, vright->v[i]);
+        }
+        return reinterpret_cast<PyObject*>(ret);
+    }
+    VectorBase* vleft = reinterpret_cast<VectorBase*>(left);
+
+    VectorBase* ret = PyObject_NEW(VectorBase, left->ob_type);
+    ret->alloc(vleft->len);
+
+    // vec * scalar
+    if (fromPython(right, &val))
+    {
+        for (int i=0; i<vleft->len; ++i)
+            ret->v[i] = op(vleft->v[i], val);
+        return reinterpret_cast<PyObject*>(ret);
+    }
+    // vec * vec
+    if (is_VectorBase(right))
+    {
+        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        if (vleft->len != vright->len)
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "expected vector of length " << vleft->len
+                           << ", got " << vright->len);
+            Py_DECREF(ret);
+            return NULL;
+        }
+        for (int i=0; i<vleft->len; ++i)
+            ret->v[i] = op(vleft->v[i], vright->v[i]);
+        return reinterpret_cast<PyObject*>(ret);
+    }
+    // vec * seq
+    if (PySequence_Check(right))
+    {
+        if (vleft->len != PySequence_Length(right))
+        {
+            setPythonError(PyExc_TypeError,
+                           SStream() << "expected vector of length " << vleft->len
+                           << ", got " << PySequence_Length(right));
+            Py_DECREF(ret);
+            return NULL;
+        }
+        for (int i=0; i<vleft->len; ++i)
+        {
+            double f;
+            if (!expectFromPython(PySequence_GetItem(right, i), &f))
+            {
+                Py_DECREF(ret);
+                return NULL;
+            }
+            ret->v[i] = op(vleft->v[i], f);
+        }
+        return reinterpret_cast<PyObject*>(ret);
+    }
+    setPythonError(PyExc_TypeError, SStream() <<
+                   "expected float scalar or sequence as right argument, got "
+                   << typeName(right));
+    Py_DECREF(ret);
+    return NULL;
+}
+
+
+
 #endif
 
 std::string VectorBase::toString(const std::string& name, int group) const
@@ -998,168 +1202,6 @@ bool VectorBase::parseSequenceExactly(PyObject* seq, double* v, int elen)
     }
     VEC::vec_copy(v, tmp, elen);
     return true;
-}
-
-bool VectorBase::binary_op_inplace(PyObject* arg,
-                                  void(*op)(double& l, double r))
-{
-    double f;
-    if (fromPython(arg, &f))
-    {
-        for (int i=0; i<this->len; ++i)
-            op(this->v[i], f);
-        return true;
-    }
-    if (is_VectorBase(arg))
-    {
-        VectorBase* varg = reinterpret_cast<VectorBase*>(arg);
-        if (this->len != varg->len)
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "expected vector of length " << this->len
-                           << ", got " << varg->len);
-            return false;
-        }
-        for (int i=0; i<this->len; ++i)
-            op(this->v[i], varg->v[i]);
-        return true;
-    }
-    if (PySequence_Check(arg))
-    {
-        if (this->len != PySequence_Length(arg))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "expected vector of length " << this->len
-                           << ", got " << PySequence_Length(arg));
-            return false;
-        }
-        for (int i=0; i<this->len; ++i)
-        {
-            double f;
-            if (!expectFromPython(PySequence_GetItem(arg, i), &f))
-                return false;
-            op(this->v[i], f);
-        }
-        return true;
-    }
-    setPythonError(PyExc_TypeError, SStream() <<
-                   "expected float scalar or sequence, got " << typeName(arg));
-    return false;
-}
-
-PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
-                                    double(*op)(double l, double r))
-{
-    // scalar * vec
-    double val;
-    if (fromPython(left, &val))
-    {
-        if (!is_VectorBase(right))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "unexpected right operand " << typeName(right));
-            return NULL;
-        }
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
-        VectorBase* ret = PyObject_NEW(VectorBase, vright->ob_base.ob_type);
-        ret->alloc(vright->len);
-        for (int i=0; i<vright->len; ++i)
-            ret->v[i] = op(val, vright->v[i]);
-        return reinterpret_cast<PyObject*>(ret);
-    }
-    // list * vec
-    if (!is_VectorBase(left))
-    {
-        if (!is_VectorBase(right))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "unexpected right operand " << typeName(right));
-            return NULL;
-        }
-        if (!PySequence_Check(left))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "unexpected left operand " << typeName(left));
-            return NULL;
-        }
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
-        if (vright->len != PySequence_Length(left))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "expected vector of length " << vright->len
-                           << ", got " << PySequence_Length(left));
-            return NULL;
-        }
-        VectorBase* ret = PyObject_NEW(VectorBase, vright->ob_base.ob_type);
-        ret->alloc(vright->len);
-        for (int i=0; i<vright->len; ++i)
-        {
-            double f;
-            if (!expectFromPython(PySequence_GetItem(left, i), &f))
-            {
-                Py_DECREF(ret);
-                return NULL;
-            }
-            ret->v[i] = op(f, vright->v[i]);
-        }
-        return reinterpret_cast<PyObject*>(ret);
-    }
-    VectorBase* vleft = reinterpret_cast<VectorBase*>(left);
-
-    VectorBase* ret = PyObject_NEW(VectorBase, left->ob_type);
-    ret->alloc(vleft->len);
-
-    // vec * scalar
-    if (fromPython(right, &val))
-    {
-        for (int i=0; i<vleft->len; ++i)
-            ret->v[i] = op(vleft->v[i], val);
-        return reinterpret_cast<PyObject*>(ret);
-    }
-    // vec * vec
-    if (is_VectorBase(right))
-    {
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
-        if (vleft->len != vright->len)
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "expected vector of length " << vleft->len
-                           << ", got " << vright->len);
-            Py_DECREF(ret);
-            return NULL;
-        }
-        for (int i=0; i<vleft->len; ++i)
-            ret->v[i] = op(vleft->v[i], vright->v[i]);
-        return reinterpret_cast<PyObject*>(ret);
-    }
-    // vec * seq
-    if (PySequence_Check(right))
-    {
-        if (vleft->len != PySequence_Length(right))
-        {
-            setPythonError(PyExc_TypeError,
-                           SStream() << "expected vector of length " << vleft->len
-                           << ", got " << PySequence_Length(right));
-            Py_DECREF(ret);
-            return NULL;
-        }
-        for (int i=0; i<vleft->len; ++i)
-        {
-            double f;
-            if (!expectFromPython(PySequence_GetItem(right, i), &f))
-            {
-                Py_DECREF(ret);
-                return NULL;
-            }
-            ret->v[i] = op(vleft->v[i], f);
-        }
-        return reinterpret_cast<PyObject*>(ret);
-    }
-    setPythonError(PyExc_TypeError, SStream() <<
-                   "expected float scalar or sequence as right argument, got "
-                   << typeName(right));
-    Py_DECREF(ret);
-    return NULL;
 }
 
 

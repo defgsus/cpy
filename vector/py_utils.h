@@ -108,6 +108,7 @@ bool expectFromPythonSequence(PyObject* seq, double* vec, size_t len);
 /** If @p arg is a tuple with one object, then return the object, otherwise arg */
 PyObject* removeArgumentTuple(PyObject* arg);
 
+void setPythonError(PyObject* exc);
 void setPythonError(PyObject* exc, const std::string& txt);
 
 std::string typeName(PyObject* arg, bool expand_sequences = false);
@@ -126,6 +127,7 @@ bool checkIndex(Py_ssize_t index, Py_ssize_t len);
 void dumpObject(PyObject* arg, bool introspect);
 
 double pythonRound(double, int n);
+double pythonModulo(double x, double m);
 
 /** A std::stringstream wrapper that converts to
     std::string or PyObject* automatically */

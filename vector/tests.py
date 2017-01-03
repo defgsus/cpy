@@ -3,6 +3,21 @@ from unittest import TestCase
 from vec import *
 
 class TestVec(TestCase):
+
+    def setUp(self):
+        self.rnd = random.Random(1)
+
+    def _prob(self, p):
+        return self.rnd.uniform(0,1) < p
+
+    def _randint(self, range):
+        x = self.rnd.randint(1,range)
+        return x if self._prob(.5) else -x
+
+    def _randop(self):
+        op = ["+", "-", "*", "/", "%"]
+        return op[self.rnd.randrange(len(op))]
+
     def test_assignment(self):
         self.assertEqual("vec()", str(vec()), )
         self.assertEqual("vec(1)", str(vec(1)))
@@ -228,16 +243,37 @@ class TestVec(TestCase):
         self.assertEqual(vec3(2,1,.5), vec3(2) / vec3((1,2,4)))
         self.assertEqual(vec3(1.5), 3 / vec3(2))
         self.assertEqual(vec3(.5,1,1.5), (1,2,3) / vec3(2))
+        with self.assertRaises(ZeroDivisionError):
+            vec(1) / 0.
 
+    def test_div_inplace(self):
         a = vec3(8)
         a /= 2
         self.assertEqual(vec3(4), a)
         a /= [1,2,4]
         self.assertEqual(vec3((4,2,1)), a)
+        with self.assertRaises(ZeroDivisionError):
+            a = vec(1)
+            a /= 0.
 
     def test_mod(self):
-        self.assertEqual(vec3(1,0,1), vec3(1,2,3) % 2)
-        self.assertEqual(vec3(1,2,.5), vec3(1,2,3) % 2.5)
+        self.assertEqual((1,0,1),   vec(1,2,3) % 2)
+        self.assertEqual((1,2,.5),  vec(1,2,3) % 2.5)
+        self.assertEqual((0,0,2),   2 % vec(1,2,3))
+        self.assertEqual( 1,        vec(1)   %  10)
+        self.assertEqual(-9,        vec(1)   % -10)
+        self.assertEqual( 9,        vec(-1)  %  10)
+        self.assertEqual(-1,        vec(-1)  % -10)
+        self.assertEqual( 4,        vec(14)  %  10)
+        self.assertEqual(-6,        vec(14)  % -10)
+        self.assertEqual( 6,        vec(-14) %  10)
+        self.assertEqual(-4,        vec(-14) % -10)
+        with self.assertRaises(ZeroDivisionError):
+            vec(1) % 0.
+        with self.assertRaises(ZeroDivisionError):
+            a = vec(1)
+            a %= 0.
+        self.assertEqual(eval("20 % (14 / -66 / 70)"), eval("(vec(20) % (14 / -66 / 70))[0]"))
 
     def test_dot(self):
         self.assertEqual(32, vec3(1,2,3).dot((4,5,6)))
@@ -282,10 +318,40 @@ class TestVec(TestCase):
         self.assertEqual(vec3(3,2,-1),
                 vec3(1,2,3).rotated_axis((1,0,0), 90).rotated_axis((0,1,0), 90).rotated_axis((0,0,1), 90).rounded())
 
-
     def test_op_speed(self):
         for i in range(1000000):
             vec3(1) + vec3(2)
+
+
+    def _build_random_term(self, term, recursive_prob):
+        if self._prob(.03) and not term.startswith("-"):
+            term = "-%s" % term
+        if self._prob(.3):
+            term = "(%s)" % term
+        if self._prob(.5):
+            term = "%i %s %s" % (self._randint(100), self._randop(), term)
+        if self._prob(.5):
+            term = "%s %s %i" % (term, self._randop(), self._randint(100))
+        if self._prob(recursive_prob):
+            term = self._build_random_term(term, recursive_prob)
+        return term
+
+    def test_random_arithmetic(self):
+        for i in range(10000):
+            startval = self._randint(100);
+            term = self._build_random_term("_start", self.rnd.uniform(0.1, .99))
+            try:
+                py_res = eval(term.replace("_start", str(startval)))
+                zero_div = False
+            except ZeroDivisionError:
+                zero_div = True
+            try:
+                vec_res = eval("(%s)[0]" % term.replace("_start", "vec(%i)" % startval))
+                self.assertFalse(zero_div)
+            except ZeroDivisionError:
+                self.assertTrue(zero_div)
+            #print(term.replace("_start", str(startval)), " |", py_res, vec_res)
+            self.assertAlmostEqual(py_res, vec_res, 3)
 
 
 

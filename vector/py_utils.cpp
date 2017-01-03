@@ -238,6 +238,26 @@ double pythonRound(double v, int n)
     }
 }
 
+double pythonModulo(double x, double m)
+{
+#if 0
+    return x - std::floor(x/m) * m;
+#else
+    if (double mod = std::fmod(x, m))
+    {
+        if ((m < 0) != (mod < 0))
+            mod += m;
+        return mod;
+    }
+    else
+        return std::copysign(0.0, m);
+#endif
+}
+
+void setPythonError(PyObject* exc)
+{
+    PyErr_SetObject(exc, NULL);
+}
 
 void setPythonError(PyObject* exc, const std::string& txt)
 {
