@@ -128,6 +128,7 @@ void dumpObject(PyObject* arg, bool introspect);
 
 double pythonRound(double, int n);
 double pythonModulo(double x, double m);
+bool pythonPower(double* res, double x, double e);
 
 /** A std::stringstream wrapper that converts to
     std::string or PyObject* automatically */

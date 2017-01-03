@@ -254,6 +254,132 @@ double pythonModulo(double x, double m)
 #endif
 }
 
+bool pythonPower(double* res, double iv, double iw)
+{
+    // adopted from
+    // https://github.com/python/cpython/blob/master/Objects/floatobject.c float_pow()
+
+    /* determine whether x is an odd integer or not;  assumes that
+       x is not an infinity or nan. */
+    #define DOUBLE_IS_ODD_INTEGER(x) (fmod(fabs(x), 2.0) == 1.0)
+    #define PYPOW_RETURN(x) { *res = (x); return true; }
+
+    int negate_result = 0;
+
+    /* Sort out special cases here instead of relying on pow() */
+    if (iw == 0) {              /* v**0 is 1, even 0**0 */
+        PYPOW_RETURN(1.0);
+    }
+    if (Py_IS_NAN(iv)) {        /* nan**w = nan, unless w == 0 */
+        PYPOW_RETURN(iv);
+    }
+    if (Py_IS_NAN(iw)) {        /* v**nan = nan, unless v == 1; 1**nan = 1 */
+        PYPOW_RETURN(iv == 1.0 ? 1.0 : iw);
+    }
+    if (Py_IS_INFINITY(iw)) {
+        /* v**inf is: 0.0 if abs(v) < 1; 1.0 if abs(v) == 1; inf if
+         *     abs(v) > 1 (including case where v infinite)
+         *
+         * v**-inf is: inf if abs(v) < 1; 1.0 if abs(v) == 1; 0.0 if
+         *     abs(v) > 1 (including case where v infinite)
+         */
+        iv = std::fabs(iv);
+        if (iv == 1.0)
+            PYPOW_RETURN(1.0)
+        else if ((iw > 0.0) == (iv > 1.0))
+            PYPOW_RETURN(std::fabs(iw)) /* return inf */
+        else
+            PYPOW_RETURN(0.0);
+    }
+    if (Py_IS_INFINITY(iv)) {
+        /* (+-inf)**w is: inf for w positive, 0 for w negative; in
+         *     both cases, we need to add the appropriate sign if w is
+         *     an odd integer.
+         */
+        int iw_is_odd = DOUBLE_IS_ODD_INTEGER(iw);
+        if (iw > 0.0)
+            PYPOW_RETURN(iw_is_odd ? iv : fabs(iv))
+        else
+            PYPOW_RETURN(iw_is_odd ? std::copysign(0.0, iv) : 0.0);
+    }
+    if (iv == 0.0) {  /* 0**w is: 0 for w positive, 1 for w zero
+                         (already dealt with above), and an error
+                         if w is negative. */
+        if (iw < 0.0) {
+            PyErr_SetString(PyExc_ZeroDivisionError,
+                            "0.0 cannot be raised to a "
+                            "negative power");
+            return NULL;
+        }
+        int iw_is_odd = DOUBLE_IS_ODD_INTEGER(iw);
+        /* use correct sign if iw is odd */
+        PYPOW_RETURN(iw_is_odd ? iv : 0.0);
+    }
+
+    if (iv < 0.0) {
+        /* Whether this is an error is a mess, and bumps into libm
+         * bugs so we have to figure it out ourselves.
+         */
+        if (iw != floor(iw)) {
+            /* Negative numbers raised to fractional powers
+             * become complex.
+             */
+            //return PyComplex_Type.tp_as_number->nb_power(v, w, z);
+            setPythonError(PyExc_ArithmeticError,
+                           "Negative numbers raised to fractional powers "
+                           "become complex, which is not supported here");
+            return false;
+        }
+        /* iw is an exact integer, albeit perhaps a very large
+         * one.  Replace iv by its absolute value and remember
+         * to negate the pow result if iw is odd.
+         */
+        iv = -iv;
+        negate_result = DOUBLE_IS_ODD_INTEGER(iw);
+    }
+
+    if (iv == 1.0) { /* 1**w is 1, even 1**inf and 1**nan */
+        /* (-1) ** large_integer also ends up here.  Here's an
+         * extract from the comments for the previous
+         * implementation explaining why this special case is
+         * necessary:
+         *
+         * -1 raised to an exact integer should never be exceptional.
+         * Alas, some libms (chiefly glibc as of early 2003) return
+         * NaN and set EDOM on pow(-1, large_int) if the int doesn't
+         * happen to be representable in a *C* integer.  That's a
+         * bug.
+         */
+        PYPOW_RETURN(negate_result ? -1.0 : 1.0);
+    }
+
+    /* Now iv and iw are finite, iw is nonzero, and iv is
+     * positive and not equal to 1.0.  We finally allow
+     * the platform pow to step in and do the rest.
+     */
+    errno = 0;
+    PyFPE_START_PROTECT("pow", return false)
+    double ix = std::pow(iv, iw);
+    PyFPE_END_PROTECT(ix)
+    Py_ADJUST_ERANGE1(ix);
+    if (negate_result)
+        ix = -ix;
+
+    if (errno != 0) {
+        /* We don't expect any errno value other than ERANGE, but
+         * the range of libm bugs appears unbounded.
+         */
+        PyErr_SetFromErrno(errno == ERANGE ? PyExc_OverflowError :
+                             PyExc_ValueError);
+        return false;
+    }
+    PYPOW_RETURN(ix);
+
+    #undef PYPOW_RETURN
+    #undef DOUBLE_IS_ODD_INTEGER
+}
+
+
 void setPythonError(PyObject* exc)
 {
     PyErr_SetObject(exc, NULL);

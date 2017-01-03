@@ -275,6 +275,17 @@ class TestVec(TestCase):
             a %= 0.
         self.assertEqual(eval("20 % (14 / -66 / 70)"), eval("(vec(20) % (14 / -66 / 70))[0]"))
 
+    def test_pow(self):
+        self.assertEqual(4, vec(2) ** 2)
+        self.assertEqual(4, 2 ** vec(2))
+        self.assertEqual(0.25, 2 ** vec(-2))
+        self.assertEqual(4, (-2) ** vec(2))
+        self.assertEqual(-4, -2 ** vec(2))
+        self.assertEqual((4,9,16), vec(2,3,4) ** 2)
+        self.assertEqual((4, 8, 16), 2 ** vec(2, 3, 4))
+        with self.assertRaises(ArithmeticError):
+            vec(-2) ** -.5
+
     def test_dot(self):
         self.assertEqual(32, vec3(1,2,3).dot((4,5,6)))
         self.assertEqual(32, vec3(1,2,3).dot(4,5,6))
@@ -332,26 +343,36 @@ class TestVec(TestCase):
             term = "%i %s %s" % (self._randint(100), self._randop(), term)
         if self._prob(.5):
             term = "%s %s %i" % (term, self._randop(), self._randint(100))
+        if self._prob(.1):
+            term = "%s ** %i" % (term, self._randint(3))
+
         if self._prob(recursive_prob):
             term = self._build_random_term(term, recursive_prob)
         return term
 
-    def test_random_arithmetic(self):
+    def _test_random_arithmetic(self):
         for i in range(10000):
             startval = self._randint(100);
             term = self._build_random_term("_start", self.rnd.uniform(0.1, .99))
+            py_str = term.replace("_start", "(%i)" % startval)
+            vec_str = "(%s)[0]" % term.replace("_start", "vec(%i)" % startval)
             try:
-                py_res = eval(term.replace("_start", str(startval)))
+                py_res = eval(py_str)
+                if isinstance(py_res, complex):
+                    continue
                 zero_div = False
             except ZeroDivisionError:
                 zero_div = True
             try:
-                vec_res = eval("(%s)[0]" % term.replace("_start", "vec(%i)" % startval))
-                self.assertFalse(zero_div)
-            except ZeroDivisionError:
-                self.assertTrue(zero_div)
-            #print(term.replace("_start", str(startval)), " |", py_res, vec_res)
-            self.assertAlmostEqual(py_res, vec_res, 3)
+                try:
+                    vec_res = eval(vec_str)
+                    self.assertFalse(zero_div)
+                except ZeroDivisionError:
+                    self.assertTrue(zero_div)
+                self.assertAlmostEqual(py_res, vec_res, 3)
+            except AssertionError as e:
+                print("%s = %s\n%s = %s" % (py_str, str(py_res), vec_str, str(vec_res)))
+                raise e
 
 
 

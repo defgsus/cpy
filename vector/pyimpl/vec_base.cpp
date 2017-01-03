@@ -458,7 +458,7 @@ LOLPIG_DEF( vec.__iadd__, )
 PyObject* vec_iadd(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-#ifndef GCC_XML
+#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l += r; }))
         return NULL;
 #endif
@@ -468,7 +468,7 @@ PyObject* vec_iadd(PyObject* self, PyObject* arg)
 LOLPIG_DEF( vec.__add__, )
 PyObject* vec_add(PyObject* left, PyObject* right)
 {
-#ifndef GCC_XML
+#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l + r; });
 #endif
@@ -479,7 +479,7 @@ LOLPIG_DEF( vec.__isub__, )
 PyObject* vec_isub(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-#ifndef GCC_XML
+#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l -= r; }))
         return NULL;
 #endif
@@ -489,7 +489,7 @@ PyObject* vec_isub(PyObject* self, PyObject* arg)
 LOLPIG_DEF( vec.__sub__, )
 PyObject* vec_sub(PyObject* left, PyObject* right)
 {
-#ifndef GCC_XML
+#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l - r; });
 #endif
@@ -500,7 +500,7 @@ LOLPIG_DEF( vec.__imul__, )
 PyObject* vec_imul(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-#ifndef GCC_XML
+#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l *= r; }))
         return NULL;
 #endif
@@ -510,7 +510,7 @@ PyObject* vec_imul(PyObject* self, PyObject* arg)
 LOLPIG_DEF( vec.__mul__, )
 PyObject* vec_mul(PyObject* left, PyObject* right)
 {
-#ifndef GCC_XML
+#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l * r; });
 #endif
@@ -553,6 +553,43 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
         setPythonError(PyExc_ZeroDivisionError, "vector division by zero");
         return NULL;
     }
+    return ret;
+#endif
+}
+
+
+LOLPIG_DEF( vec.__ipow__, )
+PyObject* vec_ipow(PyObject* self, PyObject* arg, PyObject* /*mod*/)
+{
+    //PRINT(typeName(args,true) << " " << typeName(exp, true));
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    bool err = false;
+#ifdef CPP11
+    if (!vec->binary_op_inplace(arg, [&err](double& l, double r)
+    {
+        if (!pythonPower(&l, l, r))
+            err = true;
+    }))
+        return NULL;
+#endif
+    if (err)
+        return NULL;
+    Py_RETURN_SELF;
+}
+
+LOLPIG_DEF( vec.__pow__, )
+PyObject* vec_pow(PyObject* left, PyObject* right, PyObject* /*mod*/)
+{
+    bool err = false;
+#ifdef CPP11
+    PyObject* ret = VectorBase::binary_op_copy(left, right, [&err](double l, double r)
+    {
+        if (!pythonPower(&l, l, r))
+            err = true;
+        return l;
+    });
+    if (err)
+        return NULL;
     return ret;
 #endif
 }
