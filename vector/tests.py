@@ -70,6 +70,16 @@ class TestVec(TestCase):
         a.stpq = [5,6,7,8]
         self.assertEqual((5,6,7,8), a)
 
+    def test_attributes_del(self):
+        a = vec(1,2,3)
+        self.assertEqual((1,2,3), a)
+        del a.z
+        self.assertEqual((1,2,0), a)
+        del a.xy
+        self.assertEqual((0,0,0), a)
+        with self.assertRaises(AttributeError):
+            del a.w
+
     def test_getitem(self):
         a = vec3(1,2,3)
         self.assertEqual(1, a[0])
@@ -243,8 +253,7 @@ class TestVec(TestCase):
         self.assertEqual((0,-1,0), vec3(1,0,0).crossed((0,0,1)))
         self.assertEqual((1,0,0), vec3(0,1,0).crossed((0,0,1)))
 
-    # TODO
-    def _test_rotate(self):
+    def test_rotate(self):
         self.assertEqual(vec3(1,-3,2), vec3(1,2,3).rotate_x(90).round())
         self.assertEqual(vec3(3,2,-1), vec3(1,2,3).rotate_y(90).round())
         self.assertEqual(vec3(-2,1,3), vec3(1,2,3).rotate_z(90).round())
@@ -257,7 +266,7 @@ class TestVec(TestCase):
         self.assertEqual(vec3(2,-3,-1), vec3(1,2,3).rotate_x(90).rotate_y(90).round())
         self.assertEqual(vec3(3,2,-1), vec3(1,2,3).rotate_x(90).rotate_y(90).rotate_z(90).round())
 
-    def _test_rotated(self):
+    def test_rotated(self):
         self.assertEqual(vec3(1,-3,2), vec3(1,2,3).rotated_x(90).rounded())
         self.assertEqual(vec3(3,2,-1), vec3(1,2,3).rotated_y(90).rounded())
         self.assertEqual(vec3(-2,1,3), vec3(1,2,3).rotated_z(90).rounded())

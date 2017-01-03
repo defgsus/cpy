@@ -1,6 +1,7 @@
 #include <vector>
 #include "vec_base.h"
 #include "mat_base.h"
+#include "vector_math.h"
 
 #ifdef CPP11
 #   include <limits>
@@ -260,6 +261,12 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
                 if (idx == i)
                     return PyObject_GenericSetAttr(self, name, args);
             idxs.push_back(idx);
+        }
+        if (args == NULL)
+        {
+            for (auto idx : idxs)
+                vec->v[idx] = 0.;
+            return 0;
         }
         double v[idxs.size()+1];
         int len = VectorBase::parseSequence(args, v, idxs.size()+1);
@@ -962,6 +969,36 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
     return write;
 }
 
+bool VectorBase::parseSequenceExactly(PyObject* seq, double* v, int elen)
+{
+    if (!v)
+    {
+        int len = parseSequence(seq, NULL, elen+1);
+        if (len < 0)
+            return false;
+        if (len != elen)
+        {
+            setPythonError(PyExc_TypeError, SStream()
+                           << "Expected sequence of length " << elen << ", got "
+                           << len);
+            return false;
+        }
+        return true;
+    }
+    double tmp[elen+1];
+    int len = parseSequence(seq, tmp, elen+1);
+    if (len < 0)
+        return false;
+    if (len != elen)
+    {
+        setPythonError(PyExc_TypeError, SStream()
+                       << "Expected sequence of length " << elen << ", got "
+                       << len);
+        return false;
+    }
+    VEC::vec_copy(v, tmp, elen);
+    return true;
+}
 
 bool VectorBase::binary_op_inplace(PyObject* arg,
                                   void(*op)(double& l, double r))

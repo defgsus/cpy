@@ -84,6 +84,8 @@ extern "C" {
          */
         static int parseSequence(PyObject* seq, double* v=NULL,
                                  int max_len=0, int default_len=0);
+        /** Same as parseSequence, but length is expected to be exactly @p len. */
+        static bool parseSequenceExactly(PyObject* seq, double* v, int len);
 
         double lengthSquared() const;
     };

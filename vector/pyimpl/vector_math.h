@@ -42,6 +42,114 @@ void vec_copy(F* dst, const F* src, int len)
         *dst++ = *src++;
 }
 
+
+// -------------- rotation copy ------------------
+
+template <typename F>
+void vec3_rotate_x_deg(F* dst, const F* src, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    dst[0] = src[0];
+    dst[1] = src[1] * ca - src[2] * sa;
+    dst[2] = src[1] * sa + src[2] * ca;
+}
+
+template <typename F>
+void vec3_rotate_y_deg(F* dst, const F* src, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    dst[0] = src[0] * ca + src[2] * sa;
+    dst[1] = src[1];
+    dst[2] = -src[0] * sa + src[2] * ca;
+}
+
+template <typename F>
+void vec3_rotate_z_deg(F* dst, const F* src, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    dst[0] = src[0] * ca - src[1] * sa;
+    dst[1] = src[0] * sa + src[1] * ca;
+    dst[2] = src[2];
+}
+
+template <typename F>
+void vec3_rotate_axis_deg(F* dst, const F* src, const F* axis, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree),
+      m = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2],
+      ms = std::sqrt(m);
+
+    dst[0] = (axis[0] * (axis[0] * src[0] + axis[1] * src[1] + axis[2] * src[2])
+                + ca * (src[0] * (axis[1] * axis[1] + axis[2] * axis[2]) + axis[0] * (-axis[1] * src[1] - axis[2] * src[2]))
+                + sa * ms * (-axis[2] * src[1] + axis[1] * src[2])) / m;
+    dst[1] = (axis[1] * (axis[0] * src[0] + axis[1] * src[1] + axis[2] * src[2])
+                + ca * (src[1] * (axis[0] * axis[0] + axis[2] * axis[2]) + axis[1] * (-axis[0] * src[0] - axis[2] * src[2]))
+                + sa * ms * (axis[2] * src[0] - axis[0] * src[2])) / m;
+    dst[2] = (axis[2] * (axis[0] * src[0] + axis[1] * src[1] + axis[2] * src[2])
+                + ca * (src[2] * (axis[0] * axis[0] + axis[1] * axis[1]) + axis[2] * (-axis[0] * src[0] - axis[1] * src[1]))
+                + sa * ms * (-axis[1] * src[0] + axis[0] * src[1])) / m;
+}
+
+
+// -------------------- rotation inplace -----------------------
+
+template <typename F>
+void vec3_rotate_x_deg_inplace(F* vec, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    F y =    vec[1] * ca - vec[2] * sa;
+    vec[2] = vec[1] * sa + vec[2] * ca;
+    vec[1] = y;
+}
+
+template <typename F>
+void vec3_rotate_y_deg_inplace(F* vec, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    F x =     vec[0] * ca + vec[2] * sa;
+    vec[2] = -vec[0] * sa + vec[2] * ca;
+    vec[0] = x;
+}
+
+template <typename F>
+void vec3_rotate_z_deg_inplace(F* vec, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree);
+    F x =    vec[0] * ca - vec[1] * sa;
+    vec[1] = vec[0] * sa + vec[1] * ca;
+    vec[0] = x;
+}
+
+template <typename F>
+void vec3_rotate_axis_deg_inplace(F* vec, const F* axis, F degree)
+{
+    degree *= DEG_TO_TWO_PI;
+    F sa = std::sin(degree), ca = std::cos(degree),
+      m = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2],
+      ms = std::sqrt(m);
+
+    F x    = (axis[0] * (axis[0] * vec[0] + axis[1] * vec[1] + axis[2] * vec[2])
+                + ca * (vec[0] * (axis[1] * axis[1] + axis[2] * axis[2]) + axis[0] * (-axis[1] * vec[1] - axis[2] * vec[2]))
+                + sa * ms * (-axis[2] * vec[1] + axis[1] * vec[2])) / m;
+    F y    = (axis[1] * (axis[0] * vec[0] + axis[1] * vec[1] + axis[2] * vec[2])
+                + ca * (vec[1] * (axis[0] * axis[0] + axis[2] * axis[2]) + axis[1] * (-axis[0] * vec[0] - axis[2] * vec[2]))
+                + sa * ms * (axis[2] * vec[0] - axis[0] * vec[2])) / m;
+    vec[2] = (axis[2] * (axis[0] * vec[0] + axis[1] * vec[1] + axis[2] * vec[2])
+                + ca * (vec[2] * (axis[0] * axis[0] + axis[1] * axis[1]) + axis[2] * (-axis[0] * vec[0] - axis[1] * vec[1]))
+                + sa * ms * (-axis[1] * vec[0] + axis[0] * vec[1])) / m;
+    vec[1] = y;
+    vec[0] = x;
+}
+
+
+
 template <typename F>
 void mat_set_identity(F* v, int rows, int cols, F val = F(1))
 {
