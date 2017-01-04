@@ -24,6 +24,9 @@ namespace PYTHON {
 
 extern "C" {
     struct VectorBase;
+    struct MatrixBase;
+    struct Vector3;
+    struct Matrix33;
 }
 
 
@@ -112,6 +115,8 @@ extern "C" {
         int iter;
 
         std::string toString() const;
+
+        operator PyObject* () { return reinterpret_cast<PyObject*>(this); }
     };
 
     VectorIter* new_VectorIter();
@@ -119,6 +124,46 @@ extern "C" {
 
 } // extern "C"
 	
+#if 1
+
+template <class T, class F>
+inline T pyobject_cast(F o) { return reinterpret_cast<T>(o); }
+
+#else
+    // XXX Maybe we can provide at least some type-safety for pyobject_cast ??
+
+    template <class T>
+    struct pyobject_cast { };
+
+    template <>
+    struct pyobject_cast<PyObject*>
+    {
+        PyObject* o;
+        operator PyObject* () const { return o; }
+        pyobject_cast(VectorBase* o) : o(reinterpret_cast<PyObject*>(o)) { }
+        pyobject_cast(VectorIter* o) : o(reinterpret_cast<PyObject*>(o)) { }
+        pyobject_cast(Vector3* o) : o(reinterpret_cast<PyObject*>(o)) { }
+        pyobject_cast(MatrixBase* o) : o(reinterpret_cast<PyObject*>(o)) { }
+        pyobject_cast(Matrix33* o) : o(reinterpret_cast<PyObject*>(o)) { }
+    };
+
+    #define PYVEC_DEFINE_CAST(class__) \
+    template <> \
+    struct pyobject_cast<class__*> \
+    { \
+        class__* o; \
+        operator class__* () const { return o; } \
+        pyobject_cast(PyObject* o) : o(reinterpret_cast<class__*>(o)) { } \
+    };
+
+    PYVEC_DEFINE_CAST(VectorBase)
+    PYVEC_DEFINE_CAST(VectorIter)
+    PYVEC_DEFINE_CAST(Vector3)
+    PYVEC_DEFINE_CAST(MatrixBase)
+    PYVEC_DEFINE_CAST(Matrix33)
+#endif
+
+
 } // namespace PYTHON
 } // namespace MO
 

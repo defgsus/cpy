@@ -19,14 +19,14 @@ PyObject* vec3_new(struct _typeobject* type, PyObject* args, PyObject* )
         Py_DECREF(vec);
         return NULL;
     }
-    return reinterpret_cast<PyObject*>(vec);
+    return pyobject_cast<PyObject*>(vec);
 }
 
 /*
 LOLPIG_DEF( vec3.__init__, )
 int vec3_init(PyObject* self, PyObject* args, PyObject* )
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Vector3* vec = pyobject_cast<Vector3*>(self);
     if (VectorBase::parseSequence(args, vec->v, 3) == 0)
         return -1;
     vec->len = 3;
@@ -37,14 +37,14 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* )
 LOLPIG_DEF( vec3.__repr__, )
 PyObject* vec3_repr(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Vector3* vec = pyobject_cast<Vector3*>(self);
     return toPython(vec->toRepr("vec3"));
 }
 
 LOLPIG_DEF( vec3.__str__, )
 PyObject* vec3_str(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Vector3* vec = pyobject_cast<Vector3*>(self);
     return toPython(vec->toString("vec3"));
 }
 
@@ -62,7 +62,7 @@ PyObject* vec3_cross(PyObject* self, PyObject* obj)
     double v[3];
     if (!VectorBase::parseSequenceExactly(obj, v, 3))
         return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VEC::vec3_cross_inplace(vec->v, v);
     Py_RETURN_SELF;
 }
@@ -81,10 +81,10 @@ PyObject* vec3_crossed(PyObject* self, PyObject* obj)
     double v[3];
     if (!VectorBase::parseSequenceExactly(obj, v, 3))
         return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    Vector3* ret = reinterpret_cast<Vector3*>(createVector(3));
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
+    Vector3* ret = pyobject_cast<Vector3*>(createVector(3));
     VEC::vec3_cross(ret->v, vec->v, v);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 
@@ -103,7 +103,7 @@ PyObject* vec3_rotate_x(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VEC::vec3_rotate_x_deg_inplace(vec->v, degree);
     Py_RETURN_SELF;
 }
@@ -119,7 +119,7 @@ PyObject* vec3_rotate_y(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VEC::vec3_rotate_y_deg_inplace(vec->v, degree);
     Py_RETURN_SELF;
 }
@@ -135,7 +135,7 @@ PyObject* vec3_rotate_z(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VEC::vec3_rotate_z_deg_inplace(vec->v, degree);
     Py_RETURN_SELF;
 }
@@ -161,7 +161,7 @@ PyObject* vec3_rotate_axis(PyObject* self, PyObject *args)
     double degree;
     if (!expectFromPython(PyTuple_GetItem(args, 1), &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VEC::vec3_rotate_axis_deg_inplace(vec->v, axis, degree);
     Py_RETURN_SELF;
 }
@@ -182,10 +182,10 @@ PyObject* vec3_rotated_x(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VectorBase* ret = vec->copyClass();
     VEC::vec3_rotate_x_deg(ret->v, vec->v, degree);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 LOLPIG_DEF(vec3.rotated_y, (
@@ -199,10 +199,10 @@ PyObject* vec3_rotated_y(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VectorBase* ret = vec->copyClass();
     VEC::vec3_rotate_y_deg(ret->v, vec->v, degree);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 LOLPIG_DEF(vec3.rotated_z, (
@@ -216,10 +216,10 @@ PyObject* vec3_rotated_z(PyObject* self, PyObject *obj)
     double degree;
     if (!expectFromPython(obj, &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VectorBase* ret = vec->copyClass();
     VEC::vec3_rotate_z_deg(ret->v, vec->v, degree);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 LOLPIG_DEF(vec3.rotated_axis, (
@@ -243,10 +243,10 @@ PyObject* vec3_rotated_axis(PyObject* self, PyObject *args)
     double degree;
     if (!expectFromPython(PyTuple_GetItem(args, 1), &degree))
        return NULL;
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VectorBase* ret = vec->copyClass();
     VEC::vec3_rotate_axis_deg(ret->v, vec->v, axis, degree);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 

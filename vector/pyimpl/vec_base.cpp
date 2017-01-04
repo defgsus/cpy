@@ -30,14 +30,14 @@ PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
         return NULL;
     }
 
-    return reinterpret_cast<PyObject*>(vec);
+    return pyobject_cast<PyObject*>(vec);
 }
 
 /*
 LOLPIG_DEF( vec.__init__, )
 int vec_init(PyObject* self, PyObject* args, PyObject* )
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     vec->len = VectorBase::parseSequence(args, vec->v, 16);
     if (vec->len == 0)
         return -1;
@@ -49,7 +49,7 @@ int vec_init(PyObject* self, PyObject* args, PyObject* )
 LOLPIG_DEF( vec.__dealloc__, )
 void vec_free(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     vec->dealloc();
     self->ob_type->tp_free(self);
 }
@@ -57,22 +57,22 @@ void vec_free(PyObject* self)
 LOLPIG_DEF( vec.copy, )
 PyObject* vec_copy(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    return reinterpret_cast<PyObject*>(vec->copy());
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
+    return pyobject_cast<PyObject*>(vec->copy());
 }
 
 
 LOLPIG_DEF( vec.__repr__, )
 PyObject* vec_repr(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(vec->toRepr("vec"));
 }
 
 LOLPIG_DEF( vec.__str__, )
 PyObject* vec_str(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(vec->toString("vec"));
 }
 
@@ -85,7 +85,7 @@ PyObject* vec_str(PyObject* self)
 LOLPIG_DEF( vec.__contains__, )
 int vec_contains(PyObject* self, PyObject* obj)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 
     // scalar in vec
     double s;
@@ -126,7 +126,7 @@ int vec_contains(PyObject* self, PyObject* obj)
 LOLPIG_DEF( vec.__getitem__, )
 PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     if (!checkIndex(idx, vec->len))
         return NULL;
     return toPython(vec->v[idx]);
@@ -135,7 +135,7 @@ PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 LOLPIG_DEF( vec.__setitem__, )
 int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     if (!checkIndex(idx, vec->len))
         return -1;
     if (!expectFromPython(val, &vec->v[idx]))
@@ -146,7 +146,7 @@ int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 LOLPIG_DEF( vec.__len__, )
 Py_ssize_t vec_len(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return vec->len;
 }
 
@@ -154,20 +154,20 @@ Py_ssize_t vec_len(PyObject* self)
 LOLPIG_DEF( vec.__iter__, )
 PyObject* vec_iter(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     VectorIter* iter = new_VectorIter();
     iter->iter = 0;
     iter->vec = vec;
     Py_INCREF(vec);
     //PRINT("NEWITER " << iter->toString());
-    return reinterpret_cast<PyObject*>(iter);
+    return pyobject_cast<PyObject*>(iter);
 }
 
 LOLPIG_DEF( _vec_iter.__iter__, )
 PyObject* veciter_iter(PyObject* self)
 {
     //Py_RETURN_SELF;
-    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    VectorIter* iter = pyobject_cast<VectorIter*>(self);
     //PRINT("ITER " << iter->toString());
     Py_RETURN_OBJECT(iter);
 }
@@ -175,7 +175,7 @@ PyObject* veciter_iter(PyObject* self)
 LOLPIG_DEF( _vec_iter.__next__, )
 PyObject* veciter_next(PyObject* self)
 {
-    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    VectorIter* iter = pyobject_cast<VectorIter*>(self);
     //PRINT("NEXT " << iter->toString());
     if (!iter->vec)
         return NULL;
@@ -191,7 +191,7 @@ PyObject* veciter_next(PyObject* self)
 LOLPIG_DEF( _vec_iter.__dealloc__, )
 void veciter_dealloc(PyObject* self)
 {
-    VectorIter* iter = reinterpret_cast<VectorIter*>(self);
+    VectorIter* iter = pyobject_cast<VectorIter*>(self);
     //PRINT("DEALLOC " << iter->toString());
     Py_CLEAR(iter->vec);
     self->ob_type->tp_free(self);
@@ -207,7 +207,7 @@ PyObject* vec_getattro(PyObject* self, PyObject* name)
     std::string s;
     if (fromPython(name, &s))
     {
-        VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+        VectorBase* vec = pyobject_cast<VectorBase*>(self);
         std::vector<double> ret;
 #ifdef CPP11
         for (auto c : s)
@@ -228,7 +228,7 @@ PyObject* vec_getattro(PyObject* self, PyObject* name)
         }
         if (ret.size() == 1)
             toPython(ret[0]);
-        return reinterpret_cast<PyObject*>(createVector(ret.size(), ret.data()));
+        return pyobject_cast<PyObject*>(createVector(ret.size(), ret.data()));
 #endif
     }
     if (PyErr_Occurred())
@@ -244,7 +244,7 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
     std::string s;
     if (fromPython(name, &s))
     {
-        VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+        VectorBase* vec = pyobject_cast<VectorBase*>(self);
         std::vector<int> idxs;
 #ifdef CPP11
         for (auto c : s)
@@ -305,7 +305,7 @@ LOLPIG_DEF( vec.split, (
     ))
 PyObject* vec_split(PyObject* self, PyObject* obj)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     long n;
     if (!expectFromPython(obj, &n))
         return NULL;
@@ -320,7 +320,7 @@ PyObject* vec_split(PyObject* self, PyObject* obj)
         if (r > 0)
         {
             VectorBase* v = createVector(r, &vec->v[read]);
-            PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(v));
+            PyList_SetItem(ret, i, pyobject_cast<PyObject*>(v));
             read += r;
         }
     }
@@ -334,7 +334,7 @@ PyObject* vec_split(PyObject* self, PyObject* obj)
 LOLPIG_DEF( vec.__eq__, )
 PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool cmp = true;
     double scalar;
     if (fromPython(arg, &scalar))
@@ -398,9 +398,9 @@ PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
 LOLPIG_DEF( vec.__abs__, )
 PyObject* vec_abs(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
-    return reinterpret_cast<PyObject*>(vec->unary_op_copy([](double x)
+    return pyobject_cast<PyObject*>(vec->unary_op_copy([](double x)
         { return std::abs(x); }));
 #endif
 }
@@ -408,9 +408,9 @@ PyObject* vec_abs(PyObject* self)
 LOLPIG_DEF( vec.__neg__, )
 PyObject* vec_neg(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
-    return reinterpret_cast<PyObject*>(vec->unary_op_copy([](double x)
+    return pyobject_cast<PyObject*>(vec->unary_op_copy([](double x)
         { return -x; }));
 #endif
 }
@@ -430,9 +430,9 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
         if (!expectFromPython(PyTuple_GetItem(args, 0), &digits))
             return NULL;
     }
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
-    return reinterpret_cast<PyObject*>(vec->unary_op_copy([=](double x)
+    return pyobject_cast<PyObject*>(vec->unary_op_copy([=](double x)
         { return pythonRound(x, digits); }));
 #endif
 }
@@ -450,7 +450,7 @@ LOLPIG_DEF( vec.__ipow__, (
 PyObject* vec_ipow__(PyObject* self, PyObject* arg, PyObject* /*mod*/)
 {
     //PRINT(typeName(arg,true) << " " << typeName(mod, true));
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool err = false;
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&err](double& l, double r)
@@ -496,7 +496,7 @@ PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
 LOLPIG_DEF( vec.__iadd__, )
 PyObject* vec_iadd(PyObject* self, PyObject* arg)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l += r; }))
         return NULL;
@@ -517,7 +517,7 @@ PyObject* vec_add(PyObject* left, PyObject* right)
 LOLPIG_DEF( vec.__isub__, )
 PyObject* vec_isub(PyObject* self, PyObject* arg)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l -= r; }))
         return NULL;
@@ -538,7 +538,7 @@ PyObject* vec_sub(PyObject* left, PyObject* right)
 LOLPIG_DEF( vec.__imul__, )
 PyObject* vec_imul(PyObject* self, PyObject* arg)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l *= r; }))
         return NULL;
@@ -559,7 +559,7 @@ PyObject* vec_mul(PyObject* left, PyObject* right)
 LOLPIG_DEF( vec.__itruediv__, )
 PyObject* vec_itruediv(PyObject* self, PyObject* arg)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool zero = false;
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
@@ -602,7 +602,7 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
 LOLPIG_DEF( vec.__imod__, )
 PyObject* vec_imod(PyObject* self, PyObject* arg)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool zero = false;
 #ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
@@ -655,7 +655,7 @@ PyObject* vec_round(PyObject* self, PyObject* args)
         if (!expectFromPython(PyTuple_GetItem(args, 0), &digits))
             return NULL;
     }
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
     vec->unary_op_inplace([=](double x){ return pythonRound(x, digits); });
 #endif
@@ -669,7 +669,7 @@ LOLPIG_DEF( vec.floor, (
     ))
 PyObject* vec_floor(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
     vec->unary_op_inplace([](double x){ return std::floor(x); });
 #endif
@@ -685,7 +685,7 @@ LOLPIG_DEF( vec.normalize, (
     ))
 PyObject* vec_normalize(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     double l = vec->lengthSquared();
     if (l)
     {
@@ -707,7 +707,7 @@ LOLPIG_DEF(vec.length, (
     ))
 PyObject* vec_length(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(std::sqrt(vec->lengthSquared()));
 }
 
@@ -718,7 +718,7 @@ LOLPIG_DEF(vec.length_squared, (
     ))
 PyObject* vec_length_squared(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(vec->lengthSquared());
 }
 
@@ -730,7 +730,7 @@ LOLPIG_DEF(vec.distance, (
     ))
 PyObject* vec_distance(PyObject* self, PyObject* args)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     double v[vec->len];
     if (VectorBase::parseSequence(args, v, vec->len) < 0)
         return NULL;
@@ -747,7 +747,7 @@ LOLPIG_DEF(vec.distance_squared, (
     ))
 PyObject* vec_distance_squared(PyObject* self, PyObject* args)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     double v[vec->len];
     if (VectorBase::parseSequence(args, v, vec->len) < 0)
         return NULL;
@@ -765,7 +765,7 @@ LOLPIG_DEF(vec.dot, (
     ))
 PyObject* vec_dot(PyObject* self, PyObject* args)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     double v[vec->len+1];
     int len = VectorBase::parseSequence(args, v, vec->len+1);
     if (len < 0)
@@ -796,9 +796,9 @@ PyObject* vec_rounded(PyObject* self, PyObject* args)
 LOLPIG_DEF( vec.floored, )
 PyObject* vec_floored(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
 #ifdef CPP11
-    return reinterpret_cast<PyObject*>(
+    return pyobject_cast<PyObject*>(
         vec->unary_op_copy([](double x) { return std::floor(x); }));
 #endif
 }
@@ -806,13 +806,13 @@ PyObject* vec_floored(PyObject* self)
 LOLPIG_DEF( vec.normalized, )
 PyObject* vec_normalized(PyObject* self)
 {
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VectorBase* vec = pyobject_cast<VectorBase*>(self);
     double l = vec->lengthSquared();
     if (!l)
         Py_RETURN_SELF;
     l = 1./std::sqrt(l);
 #ifdef CPP11
-    return reinterpret_cast<PyObject*>(
+    return pyobject_cast<PyObject*>(
         vec->unary_op_copy([=](double x) { return x * l; }));
 #endif
 }
@@ -830,7 +830,7 @@ VectorBase* createVector(int len, const double* v, int stride)
     switch (len)
     {
         default: vec = new_VectorBase(); break;
-        case 3: vec = reinterpret_cast<VectorBase*>(new_Vector3()); break;
+        case 3: vec = pyobject_cast<VectorBase*>(new_Vector3()); break;
     }
     vec->alloc(len);
     if (v)
@@ -883,8 +883,8 @@ VectorBase* VectorBase::copyClass() const
     vec->alloc(this->len);
     if (is_MatrixBase(const_cast<PyObject*>(reinterpret_cast<const PyObject*>(this))))
     {
-        reinterpret_cast<MatrixBase*>(vec)->num_rows = reinterpret_cast<const MatrixBase*>(this)->num_rows;
-        reinterpret_cast<MatrixBase*>(vec)->num_cols = reinterpret_cast<const MatrixBase*>(this)->num_cols;
+        pyobject_cast<MatrixBase*>(vec)->num_rows = reinterpret_cast<const MatrixBase*>(this)->num_rows;
+        pyobject_cast<MatrixBase*>(vec)->num_cols = reinterpret_cast<const MatrixBase*>(this)->num_cols;
     }
     return vec;
 }
@@ -926,7 +926,7 @@ bool VectorBase::binary_op_inplace(
         return false;
     if (is_VectorBase(arg))
     {
-        VectorBase* varg = reinterpret_cast<VectorBase*>(arg);
+        VectorBase* varg = pyobject_cast<VectorBase*>(arg);
         if (this->len != varg->len)
         {
             setPythonError(PyExc_TypeError,
@@ -974,12 +974,12 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
                            SStream() << "unexpected right operand " << typeName(right));
             return NULL;
         }
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        VectorBase* vright = pyobject_cast<VectorBase*>(right);
         VectorBase* ret = PyObject_NEW(VectorBase, vright->ob_base.ob_type);
         ret->alloc(vright->len);
         for (int i=0; i<vright->len; ++i)
             ret->v[i] = op(val, vright->v[i]);
-        return reinterpret_cast<PyObject*>(ret);
+        return pyobject_cast<PyObject*>(ret);
     }
     if (PyErr_Occurred())
         return NULL;
@@ -999,7 +999,7 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
                            SStream() << "unexpected left operand " << typeName(left));
             return NULL;
         }
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        VectorBase* vright = pyobject_cast<VectorBase*>(right);
         if (vright->len != PySequence_Length(left))
         {
             setPythonError(PyExc_TypeError,
@@ -1019,9 +1019,9 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
             }
             ret->v[i] = op(f, vright->v[i]);
         }
-        return reinterpret_cast<PyObject*>(ret);
+        return pyobject_cast<PyObject*>(ret);
     }
-    VectorBase* vleft = reinterpret_cast<VectorBase*>(left);
+    VectorBase* vleft = pyobject_cast<VectorBase*>(left);
 
     VectorBase* ret = PyObject_NEW(VectorBase, left->ob_type);
     ret->alloc(vleft->len);
@@ -1031,7 +1031,7 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
     {
         for (int i=0; i<vleft->len; ++i)
             ret->v[i] = op(vleft->v[i], val);
-        return reinterpret_cast<PyObject*>(ret);
+        return pyobject_cast<PyObject*>(ret);
     }
     if (PyErr_Occurred())
         return NULL;
@@ -1039,7 +1039,7 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
     // vec * vec
     if (is_VectorBase(right))
     {
-        VectorBase* vright = reinterpret_cast<VectorBase*>(right);
+        VectorBase* vright = pyobject_cast<VectorBase*>(right);
         if (vleft->len != vright->len)
         {
             setPythonError(PyExc_TypeError,
@@ -1050,7 +1050,7 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
         }
         for (int i=0; i<vleft->len; ++i)
             ret->v[i] = op(vleft->v[i], vright->v[i]);
-        return reinterpret_cast<PyObject*>(ret);
+        return pyobject_cast<PyObject*>(ret);
     }
     // vec * seq
     if (PySequence_Check(right))
@@ -1073,7 +1073,7 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
             }
             ret->v[i] = op(vleft->v[i], f);
         }
-        return reinterpret_cast<PyObject*>(ret);
+        return pyobject_cast<PyObject*>(ret);
     }
     setPythonError(PyExc_TypeError, SStream() <<
                    "expected float scalar or sequence as right argument, got "

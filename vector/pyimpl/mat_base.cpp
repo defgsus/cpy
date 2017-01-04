@@ -27,28 +27,28 @@ PyObject* mat_new(struct _typeobject* type, PyObject* args, PyObject* kwargs)
         return NULL;
     }
 
-    return reinterpret_cast<PyObject*>(vec);
+    return pyobject_cast<PyObject*>(vec);
 }
 
 
 LOLPIG_DEF( mat.__repr__, )
 PyObject* mat_repr(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(vec->toRepr("mat", vec->num_rows));
 }
 
 LOLPIG_DEF( mat.__str__, )
 PyObject* mat_str(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(vec->toString("mat", vec->num_rows));
 }
 
 LOLPIG_DEF( mat.string, Returns a multi-line string representation)
 PyObject* mat_string(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(vec->matrixString(vec->v, vec->num_rows, vec->num_cols, "mat"));
 }
 
@@ -59,7 +59,7 @@ LOLPIG_DEF( mat.num_rows, (
     ))
 PyObject* mat_num_rows(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython((long)vec->num_rows);
 }
 
@@ -69,7 +69,7 @@ LOLPIG_DEF( mat.num_columns, (
     ))
 PyObject* mat_num_columns(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython((long)vec->num_cols);
 }
 
@@ -80,7 +80,7 @@ LOLPIG_DEF( mat.trace, (
     ))
 PyObject* mat_trace(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(VEC::mat_trace(vec->v, vec->num_rows, vec->num_cols));
 }
 
@@ -90,13 +90,13 @@ LOLPIG_DEF( mat.column, (
     ))
 PyObject* mat_column(PyObject* self, PyObject* obj)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     long idx;
     if (!expectFromPython(obj, &idx))
         return NULL;
     if (!checkIndex(idx, vec->num_cols))
         return NULL;
-    return reinterpret_cast<PyObject*>(
+    return pyobject_cast<PyObject*>(
                 createVector(vec->num_rows, &vec->v[idx*vec->num_rows]) );
 }
 
@@ -106,13 +106,13 @@ LOLPIG_DEF( mat.row, (
     ))
 PyObject* mat_row(PyObject* self, PyObject* obj)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     long idx;
     if (!expectFromPython(obj, &idx))
         return NULL;
     if (!checkIndex(idx, vec->num_rows))
         return NULL;
-    return reinterpret_cast<PyObject*>(
+    return pyobject_cast<PyObject*>(
                 createVector(vec->num_rows, &vec->v[idx], vec->num_rows) );
 }
 
@@ -123,14 +123,14 @@ LOLPIG_DEF( mat.columns, (
     ))
 PyObject* mat_columns(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
 
     PyObject* ret = PyList_New(vec->num_cols);
     for (int i=0; i<vec->num_cols; ++i)
     {
         int idx = i * vec->num_rows;
         VectorBase* v = createVector(vec->num_rows, &vec->v[idx]);
-        PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(v));
+        PyList_SetItem(ret, i, pyobject_cast<PyObject*>(v));
     }
     return ret;
 }
@@ -141,13 +141,13 @@ LOLPIG_DEF( mat.rows, (
     ))
 PyObject* mat_rows(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
 
     PyObject* ret = PyList_New(vec->num_rows);
     for (int i=0; i<vec->num_rows; ++i)
     {
         VectorBase* ve = createVector(vec->num_cols, &vec->v[i], vec->num_rows);
-        PyList_SetItem(ret, i, reinterpret_cast<PyObject*>(ve));
+        PyList_SetItem(ret, i, pyobject_cast<PyObject*>(ve));
     }
     return ret;
 }
@@ -161,7 +161,7 @@ LOLPIG_DEF( mat.set_identity, (
     ))
 PyObject* mat_set_identity(PyObject* self, PyObject* args)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     double i=1.;
     if (!isEmpty(args))
     {
@@ -178,7 +178,7 @@ LOLPIG_DEF( mat.transpose, (
     ))
 PyObject* mat_transpose(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     VEC::mat_transpose_inplace(vec->v, vec->num_rows, vec->num_cols);
     std::swap(vec->num_rows, vec->num_cols);
     Py_RETURN_SELF;
@@ -193,13 +193,13 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
 {
     if (is_MatrixBase(left))
     {
-        MatrixBase* mleft = reinterpret_cast<MatrixBase*>(left);
+        MatrixBase* mleft = pyobject_cast<MatrixBase*>(left);
 
         // mat * mat
         if (is_MatrixBase(right))
         {
-            MatrixBase* mright = reinterpret_cast<MatrixBase*>(right);
-            return reinterpret_cast<PyObject*>(mleft->matrixMultCopy(mright));
+            MatrixBase* mright = pyobject_cast<MatrixBase*>(right);
+            return pyobject_cast<PyObject*>(mleft->matrixMultCopy(mright));
         }
         // mat * vec
         int len = VectorBase::parseSequence(right);
@@ -212,7 +212,7 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
             // mat4 * seq3
             if (mleft->num_cols==4 && mleft->num_rows==4)
             {
-                return reinterpret_cast<PyObject*>(createVector(
+                return pyobject_cast<PyObject*>(createVector(
                     l[0] * r[0] + l[4] * r[1] + l[8 ] * r[2] + l[12],
                     l[1] * r[0] + l[5] * r[1] + l[9 ] * r[2] + l[13],
                     l[2] * r[0] + l[6] * r[1] + l[10] * r[2] + l[14]));
@@ -220,7 +220,7 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
             // mat3 * vec3
             /*else if (mleft->num_cols==3 && mleft->num_rows==3)
             {
-                return reinterpret_cast<PyObject*>(createVector(
+                return pyobject_cast<PyObject*>(createVector(
                     l[0] * r[0] + l[3] * r[1] + l[6] * r[2] ,
                     l[1] * r[0] + l[4] * r[1] + l[7] * r[2] ,
                     l[2] * r[0] + l[5] * r[1] + l[8] * r[2] ));
@@ -231,7 +231,7 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
         {
             double r[len];
             VectorBase::parseSequence(right, r, len);
-            return reinterpret_cast<PyObject*>(mleft->matrixMultCopy(r,len,1));
+            return pyobject_cast<PyObject*>(mleft->matrixMultCopy(r,len,1));
         }
         // mat * scalar
 #ifdef CPP11
@@ -241,7 +241,7 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
     }
     else if (is_MatrixBase(right))
     {
-        //MatrixBase* mright = reinterpret_cast<MatrixBase*>(left);
+        //MatrixBase* mright = pyobject_cast<MatrixBase*>(left);
 
         // scalar * mat
 #ifdef CPP11
@@ -265,10 +265,10 @@ LOLPIG_DEF( mat.transposed, (
     ))
 PyObject* mat_transposed(PyObject* self)
 {
-    MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
+    MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     MatrixBase* ret = createMatrix(vec->num_cols, vec->num_rows);
     VEC::mat_transpose(ret->v, vec->v, vec->num_rows, vec->num_cols);
-    return reinterpret_cast<PyObject*>(ret);
+    return pyobject_cast<PyObject*>(ret);
 }
 
 
@@ -323,7 +323,7 @@ MatrixBase* MatrixBase::matrixMultCopy(const double* v, int rows, int cols) cons
     if (cols > 1)
         ret = createMatrix(num_rows, cols);
     else
-        ret = reinterpret_cast<MatrixBase*>(createVector(num_rows));
+        ret = pyobject_cast<MatrixBase*>(createVector(num_rows));
 
     VEC::mat_multiply(ret->v, this->v, this->num_rows, this->num_cols, v, cols);
     return ret;

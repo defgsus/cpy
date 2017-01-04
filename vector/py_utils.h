@@ -44,6 +44,7 @@
 
 namespace PyUtils {
 
+
 bool isNone(PyObject*);
 bool isEmpty(PyObject*);
 
