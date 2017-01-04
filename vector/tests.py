@@ -292,13 +292,15 @@ class TestVec(TestCase):
         with self.assertRaises(TypeError):
             vec3().dot((1,2))
 
-    def _test_cross(self):
+    def test_cross(self):
         self.assertEqual((0,0,1), vec3(1,0,0).cross((0,1,0)))
         self.assertEqual((0,-1,0), vec3(1,0,0).cross((0,0,1)))
         self.assertEqual((1,0,0), vec3(0,1,0).cross((0,0,1)))
         self.assertEqual((0,0,1), vec3(1,0,0).crossed((0,1,0)))
         self.assertEqual((0,-1,0), vec3(1,0,0).crossed((0,0,1)))
         self.assertEqual((1,0,0), vec3(0,1,0).crossed((0,0,1)))
+        with self.assertRaises(TypeError):
+            vec3().cross("123")
 
     def test_rotate(self):
         self.assertEqual(vec3(1,-3,2), vec3(1,2,3).rotate_x(90).round())

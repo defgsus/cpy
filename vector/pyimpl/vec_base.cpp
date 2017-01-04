@@ -437,6 +437,57 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
 #endif
 }
 
+LOLPIG_DEF( vec.__ipow__, (
+        __ipow__(float|seq) -> self
+        Applies the pow() function to all elements, INPLACE
+        >>> v = vec(1,2,3),
+        vec(1,2,3)
+        >>> v **= 2
+        vec(1,4,9)
+        >>> v **= (3,2,1)
+        vec(1,16,9)
+        ))
+PyObject* vec_ipow__(PyObject* self, PyObject* arg, PyObject* /*mod*/)
+{
+    //PRINT(typeName(arg,true) << " " << typeName(mod, true));
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    bool err = false;
+#ifdef CPP11
+    if (!vec->binary_op_inplace(arg, [&err](double& l, double r)
+    {
+        if (!pythonPower(&l, l, r))
+            err = true;
+    }))
+        return NULL;
+#endif
+    if (err)
+        return NULL;
+    Py_RETURN_SELF;
+}
+
+LOLPIG_DEF( vec.__pow__, (
+        pow(vec, float|seq) -> vec
+        Applies the pow() function to all elements
+        >>> pow(vec(1,2,3), 2)
+        vec(1,4,9)
+        >>> pow(vec(1,2,3), (1,2,3))
+        vec(1,4,27)
+        ))
+PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
+{
+    bool err = false;
+#ifdef CPP11
+    PyObject* ret = VectorBase::binary_op_copy(left, right, [&err](double l, double r)
+    {
+        if (!pythonPower(&l, l, r))
+            err = true;
+        return l;
+    });
+    if (err)
+        return NULL;
+    return ret;
+#endif
+}
 
 
 
@@ -546,57 +597,6 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
 }
 
 
-LOLPIG_DEF( vec.__ipow__, (
-        __ipow__(float|seq) -> self
-        Applies the pow() function to all elements, INPLACE
-        >>> v = vec(1,2,3),
-        vec(1,2,3)
-        >>> v **= 2
-        vec(1,4,9)
-        >>> v **= (3,2,1)
-        vec(1,16,9)
-        ))
-PyObject* vec_ipow__(PyObject* self, PyObject* arg, PyObject* /*mod*/)
-{
-    //PRINT(typeName(arg,true) << " " << typeName(mod, true));
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    bool err = false;
-#ifdef CPP11
-    if (!vec->binary_op_inplace(arg, [&err](double& l, double r)
-    {
-        if (!pythonPower(&l, l, r))
-            err = true;
-    }))
-        return NULL;
-#endif
-    if (err)
-        return NULL;
-    Py_RETURN_SELF;
-}
-
-LOLPIG_DEF( vec.__pow__, (
-        pow(vec, float|seq) -> vec
-        Applies the pow() function to all elements
-        >>> pow(vec(1,2,3), 2)
-        vec(1,4,9)
-        >>> pow(vec(1,2,3), (1,2,3))
-        vec(1,4,27)
-        ))
-PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
-{
-    bool err = false;
-#ifdef CPP11
-    PyObject* ret = VectorBase::binary_op_copy(left, right, [&err](double l, double r)
-    {
-        if (!pythonPower(&l, l, r))
-            err = true;
-        return l;
-    });
-    if (err)
-        return NULL;
-    return ret;
-#endif
-}
 
 
 LOLPIG_DEF( vec.__imod__, )

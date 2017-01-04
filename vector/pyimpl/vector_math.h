@@ -43,6 +43,24 @@ void vec_copy(F* dst, const F* src, int len)
 }
 
 
+template <typename F>
+void vec3_cross(F* dst, const F* a, const F* b)
+{
+    dst[0] = a[1] * b[2] - a[2] * b[1];
+    dst[1] = a[2] * b[0] - a[0] * b[2];
+    dst[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+template <typename F>
+void vec3_cross_inplace(F* a, const F* b)
+{
+    double x = a[1] * b[2] - a[2] * b[1],
+           y = a[2] * b[0] - a[0] * b[2];
+        a[2] = a[0] * b[1] - a[1] * b[0];
+    a[1] = y; a[0] = x;
+}
+
+
 // -------------- rotation copy ------------------
 
 template <typename F>

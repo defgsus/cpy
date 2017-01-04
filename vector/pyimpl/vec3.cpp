@@ -49,6 +49,46 @@ PyObject* vec3_str(PyObject* self)
 }
 
 
+// -------------- inplace funcs ----------------------------
+
+LOLPIG_DEF( vec3.cross, (
+        cross(seq3) -> self
+        Calculates the cross-product of this vector and seq3, INPLACE
+        The cross product is always perpendicular to the plane
+        on which the two vectors lie.
+        ))
+PyObject* vec3_cross(PyObject* self, PyObject* obj)
+{
+    double v[3];
+    if (!VectorBase::parseSequenceExactly(obj, v, 3))
+        return NULL;
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    VEC::vec3_cross_inplace(vec->v, v);
+    Py_RETURN_SELF;
+}
+
+
+// ---------------- copying funcs --------------------------
+
+LOLPIG_DEF( vec3.crossed, (
+        crossed(seq3) -> vec3
+        Returns the cross-product of this vector and seq3
+        The cross product is always perpendicular to the plane
+        on which the two vectors lie.
+        ))
+PyObject* vec3_crossed(PyObject* self, PyObject* obj)
+{
+    double v[3];
+    if (!VectorBase::parseSequenceExactly(obj, v, 3))
+        return NULL;
+    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
+    Vector3* ret = reinterpret_cast<Vector3*>(createVector(3));
+    VEC::vec3_cross(ret->v, vec->v, v);
+    return reinterpret_cast<PyObject*>(ret);
+}
+
+
+
 
 // -------------- transformation copy ----------------------
 
