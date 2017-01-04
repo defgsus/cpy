@@ -63,8 +63,11 @@ bool fromPython(PyObject* obj, std::string* s)
 {
     if (PyUnicode_Check(obj))
     {
+        const char* v = PyUnicode_AsUTF8(obj);
+        if (PyErr_Occurred())
+            return false;
         if (s)
-            *s = PyUnicode_AsUTF8(obj);
+            *s = v;
         return true;
     }
     return false;
@@ -85,24 +88,32 @@ bool fromPython(PyObject* obj, double* val)
 {
     if (PyFloat_Check(obj))
     {
+        const double v = PyFloat_AsDouble(obj);
+        if (PyErr_Occurred())
+            return false;
         if (val)
-            *val = PyFloat_AsDouble(obj);
+            *val = v;
         return true;
     }
     if (PyLong_Check(obj))
     {
+        const double v = PyLong_AsLong(obj);
+        if (PyErr_Occurred())
+            return false;
         if (val)
-            *val = PyLong_AsLong(obj);
+            *val = v;
         return true;
     }
     return false;
 }
 
+
 bool expectFromPython(PyObject* obj, std::string* s)
 {
     if (fromPython(obj, s))
         return true;
-    setPythonError(PyExc_TypeError,
+    if (!PyErr_Occurred())
+        setPythonError(PyExc_TypeError,
                    SStream() << "Expected string, got " << typeName(obj));
     return false;
 }
@@ -111,7 +122,8 @@ bool expectFromPython(PyObject* obj, long* s)
 {
     if (fromPython(obj, s))
         return true;
-    setPythonError(PyExc_TypeError,
+    if (!PyErr_Occurred())
+        setPythonError(PyExc_TypeError,
                    SStream() << "Expected int, got " << typeName(obj));
     return false;
 }
@@ -120,9 +132,9 @@ bool expectFromPython(PyObject* obj, double* val)
 {
     if (fromPython(obj, val))
         return true;
-    setPythonError(PyExc_TypeError,
+    if (!PyErr_Occurred())
+        setPythonError(PyExc_TypeError,
                    SStream() << "Expected double, got " << typeName(obj));
-
     return false;
 }
 
@@ -358,8 +370,9 @@ bool pythonPower(double* res, double iv, double iw)
      * the platform pow to step in and do the rest.
      */
     errno = 0;
+    double ix;
     PyFPE_START_PROTECT("pow", return false)
-    double ix = std::pow(iv, iw);
+    ix = std::pow(iv, iw);
     PyFPE_END_PROTECT(ix)
     Py_ADJUST_ERANGE1(ix);
     if (negate_result)
@@ -382,7 +395,7 @@ bool pythonPower(double* res, double iv, double iw)
 
 void setPythonError(PyObject* exc)
 {
-    PyErr_SetObject(exc, NULL);
+    PyErr_SetFromErrno(exc);
 }
 
 void setPythonError(PyObject* exc, const std::string& txt)

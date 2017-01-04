@@ -92,7 +92,7 @@ PyObject* mat_column(PyObject* self, PyObject* obj)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
     long idx;
-    if (!fromPython(obj, &idx))
+    if (!expectFromPython(obj, &idx))
         return NULL;
     if (!checkIndex(idx, vec->num_cols))
         return NULL;
@@ -108,7 +108,7 @@ PyObject* mat_row(PyObject* self, PyObject* obj)
 {
     MatrixBase* vec = reinterpret_cast<MatrixBase*>(self);
     long idx;
-    if (!fromPython(obj, &idx))
+    if (!expectFromPython(obj, &idx))
         return NULL;
     if (!checkIndex(idx, vec->num_rows))
         return NULL;

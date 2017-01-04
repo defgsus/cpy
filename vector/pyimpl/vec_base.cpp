@@ -98,6 +98,8 @@ int vec_contains(PyObject* self, PyObject* obj)
                 return 1;
         return 0;
     }
+    if (PyErr_Occurred())
+        return -1;
     // seq in vec
     double v[vec->len+1];
     int len = VectorBase::parseSequence(obj, v, vec->len+1);
@@ -229,6 +231,8 @@ PyObject* vec_getattro(PyObject* self, PyObject* name)
         return reinterpret_cast<PyObject*>(createVector(ret.size(), ret.data()));
 #endif
     }
+    if (PyErr_Occurred())
+        return NULL;
     return PyObject_GenericGetAttr(self, name);
 }
 
@@ -285,6 +289,8 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
         return 0;
 #endif
     }
+    if (PyErr_Occurred())
+        return -1;
     return PyObject_GenericSetAttr(self, name, args);
 }
 
@@ -350,6 +356,8 @@ PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
         }
         return toPython(cmp);
     }
+    if (PyErr_Occurred())
+        return NULL;
 
     double v[vec->len+1];
     int len = VectorBase::parseSequence(arg, v, vec->len+1);
@@ -418,7 +426,10 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
 {
     long digits = 0;
     if (PyTuple_Check(args) && PyTuple_Size(args) == 1)
-        fromPython(PyTuple_GetItem(args, 0), &digits);
+    {
+        if (!expectFromPython(PyTuple_GetItem(args, 0), &digits))
+            return NULL;
+    }
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifdef CPP11
     return reinterpret_cast<PyObject*>(vec->unary_op_copy([=](double x)
@@ -427,29 +438,6 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
 }
 
 
-LOLPIG_DEF( vec.__pow__, (
-    pow(seq[, seq]) -> vec
-    Applies the pow() function to all elements
-    >>> pow(vec(1,2,3), 2)
-    vec(1,4,9)
-    >>> pow(vec(1,2,3), (1,2,3))
-    vec(1,4,27)
-    ))
-PyObject* vec_pow__(PyObject* self, PyObject* args, PyObject* /*kwargs*/)
-{
-    PYVEC_DEBUG(typeName(args, true));
-    VectorBase* vec = reinterpret_cast<VectorBase*>(self);
-    // exp only
-    double e[vec->len];
-    if (VectorBase::parseSequence(args, e, vec->len) < 0)
-        return NULL;
-#ifdef CPP11
-    double* p=e;
-    return reinterpret_cast<PyObject*>(
-                vec->unary_op_copy([&](double x) { return std::pow(x, *p++); }));
-#endif
-    Py_RETURN_SELF;
-}
 
 
 // -------------- arithmetic ----------------------
@@ -558,10 +546,19 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
 }
 
 
-LOLPIG_DEF( vec.__ipow__, )
-PyObject* vec_ipow(PyObject* self, PyObject* arg, PyObject* /*mod*/)
+LOLPIG_DEF( vec.__ipow__, (
+        __ipow__(float|seq) -> self
+        Applies the pow() function to all elements, INPLACE
+        >>> v = vec(1,2,3),
+        vec(1,2,3)
+        >>> v **= 2
+        vec(1,4,9)
+        >>> v **= (3,2,1)
+        vec(1,16,9)
+        ))
+PyObject* vec_ipow__(PyObject* self, PyObject* arg, PyObject* /*mod*/)
 {
-    //PRINT(typeName(args,true) << " " << typeName(exp, true));
+    //PRINT(typeName(arg,true) << " " << typeName(mod, true));
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
     bool err = false;
 #ifdef CPP11
@@ -577,8 +574,15 @@ PyObject* vec_ipow(PyObject* self, PyObject* arg, PyObject* /*mod*/)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__pow__, )
-PyObject* vec_pow(PyObject* left, PyObject* right, PyObject* /*mod*/)
+LOLPIG_DEF( vec.__pow__, (
+        pow(vec, float|seq) -> vec
+        Applies the pow() function to all elements
+        >>> pow(vec(1,2,3), 2)
+        vec(1,4,9)
+        >>> pow(vec(1,2,3), (1,2,3))
+        vec(1,4,27)
+        ))
+PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
 {
     bool err = false;
 #ifdef CPP11
@@ -647,7 +651,10 @@ PyObject* vec_round(PyObject* self, PyObject* args)
 {
     long digits = 0;
     if (PyTuple_Check(args) && PyTuple_Size(args) == 1)
-        fromPython(PyTuple_GetItem(args, 0), &digits);
+    {
+        if (!expectFromPython(PyTuple_GetItem(args, 0), &digits))
+            return NULL;
+    }
     VectorBase* vec = reinterpret_cast<VectorBase*>(self);
 #ifdef CPP11
     vec->unary_op_inplace([=](double x){ return pythonRound(x, digits); });
@@ -915,6 +922,8 @@ bool VectorBase::binary_op_inplace(
             op(this->v[i], f);
         return true;
     }
+    if (PyErr_Occurred())
+        return false;
     if (is_VectorBase(arg))
     {
         VectorBase* varg = reinterpret_cast<VectorBase*>(arg);
@@ -972,6 +981,9 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
             ret->v[i] = op(val, vright->v[i]);
         return reinterpret_cast<PyObject*>(ret);
     }
+    if (PyErr_Occurred())
+        return NULL;
+
     // list * vec
     if (!is_VectorBase(left))
     {
@@ -1021,6 +1033,9 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
             ret->v[i] = op(vleft->v[i], val);
         return reinterpret_cast<PyObject*>(ret);
     }
+    if (PyErr_Occurred())
+        return NULL;
+
     // vec * vec
     if (is_VectorBase(right))
     {
@@ -1139,8 +1154,11 @@ namespace {
             {
                 ++(*write);
                 ++seq_pos;
+                continue;
             }
-            else if (isValidSequenceType(item))
+            if (PyErr_Occurred())
+                return false;
+            if (isValidSequenceType(item))
             {
                 if (!parseSequencePart(item, write, max_len, v))
                     return false;
@@ -1156,7 +1174,6 @@ namespace {
         }
         return true;
     }
-
 
 }
 
@@ -1178,6 +1195,8 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
                 v[i] = v[0];
         return 1;
     }
+    if (PyErr_Occurred())
+        return -1;
     // otherwise parse any sequence type
     if (!isValidSequenceType(seq))
     {
@@ -1196,6 +1215,8 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
                     v[i] = v[0];
             return 1;
         }
+        if (PyErr_Occurred())
+            return -1;
     }
     // parse any float/sequence combination
     int write = 0;

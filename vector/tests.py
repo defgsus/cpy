@@ -5,7 +5,7 @@ from vec import *
 class TestVec(TestCase):
 
     def setUp(self):
-        self.rnd = random.Random(1)
+        self.rnd = random.Random()
 
     def _prob(self, p):
         return self.rnd.uniform(0,1) < p
@@ -334,8 +334,8 @@ class TestVec(TestCase):
             vec3(1) + vec3(2)
 
 
-    def _build_random_term(self, term, recursive_prob):
-        if self._prob(.03) and not term.startswith("-"):
+    def _build_random_term(self, term, recursive_prob, level=0):
+        if self._prob(.01) and not term.startswith("-"):
             term = "-%s" % term
         if self._prob(.3):
             term = "(%s)" % term
@@ -343,38 +343,61 @@ class TestVec(TestCase):
             term = "%i %s %s" % (self._randint(100), self._randop(), term)
         if self._prob(.5):
             term = "%s %s %i" % (term, self._randop(), self._randint(100))
-        if self._prob(.1):
+        if self._prob(.04):
             term = "%s ** %i" % (term, self._randint(3))
 
-        if self._prob(recursive_prob):
-            term = self._build_random_term(term, recursive_prob)
+        if self._prob(recursive_prob) and level < 20:
+            term = self._build_random_term(term, recursive_prob, level+1)
         return term
 
-    def _test_random_arithmetic(self):
-        for i in range(10000):
+    def _compare_eval(self, py_str, vec_str):
+        # eval python expression
+        try:
+            py_res = eval(py_str)
+            # skip complex results
+            if isinstance(py_res, complex):
+                return
+            # also skip results that are hard to compare
+            if abs(py_res) > 1e+10:
+                return
+            zero_div = False
+        except ZeroDivisionError:
+            zero_div = True
+        except TypeError:
+            # e.g. "can't mod complex numbers"
+            return
+        except MemoryError:
+            print("MemoryError: %s" % py_str)
+            return
+        # eval vec expression
+        try:
+            try:
+                vec_res = eval(vec_str)
+                self.assertFalse(zero_div)
+            except ZeroDivisionError:
+                self.assertTrue(zero_div)
+                return
+            except OverflowError:
+                return
+            self.assertAlmostEqual(py_res, vec_res, 3)
+        except AssertionError as e:
+            print("%s = %s\n%s = %s" % (py_str, str(py_res), vec_str, str(vec_res)))
+            raise e
+
+    def test_random_arithmetic(self):
+        """Compose some random formulas and evaluate it as
+        Python float and as vec1 and compare"""
+        for i in range(1000000):
             startval = self._randint(100);
             term = self._build_random_term("_start", self.rnd.uniform(0.1, .99))
             py_str = term.replace("_start", "(%i)" % startval)
             vec_str = "(%s)[0]" % term.replace("_start", "vec(%i)" % startval)
-            try:
-                py_res = eval(py_str)
-                if isinstance(py_res, complex):
-                    continue
-                zero_div = False
-            except ZeroDivisionError:
-                zero_div = True
-            try:
-                try:
-                    vec_res = eval(vec_str)
-                    self.assertFalse(zero_div)
-                except ZeroDivisionError:
-                    self.assertTrue(zero_div)
-                self.assertAlmostEqual(py_res, vec_res, 3)
-            except AssertionError as e:
-                print("%s = %s\n%s = %s" % (py_str, str(py_res), vec_str, str(vec_res)))
-                raise e
+            self._compare_eval(py_str, vec_str)
 
-
+    def test_special_cases(self):
+        self._compare_eval(
+                " -84 - -61 % -7 * (((94 * (91)) - 96)) % 76 ** 3 ** 2 % -20",
+                "(-84 - -61 % -7 * (((94 * vec(91)) - 96)) % 76 ** 3 ** 2 % -20)[0]")
 
 
 
