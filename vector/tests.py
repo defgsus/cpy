@@ -366,6 +366,9 @@ class TestVec(TestCase):
         except TypeError:
             # e.g. "can't mod complex numbers"
             return
+        except OverflowError:
+            # okay, it's to be expected with random expressions
+            return
         except MemoryError:
             print("MemoryError: %s" % py_str)
             return
@@ -386,17 +389,17 @@ class TestVec(TestCase):
 
     def test_random_arithmetic(self):
         """Compose some random formulas and evaluate it as
-        Python float and as vec1 and compare"""
-        for i in range(1000000):
-            startval = self._randint(100);
+        Python float and vec1 and compare"""
+        for i in range(10000):
+            startval = self._randint(100)
             term = self._build_random_term("_start", self.rnd.uniform(0.1, .99))
-            py_str = term.replace("_start", "(%i)" % startval)
+            py_str = term.replace("_start", "float(%i)" % startval)
             vec_str = "(%s)[0]" % term.replace("_start", "vec(%i)" % startval)
             self._compare_eval(py_str, vec_str)
 
     def test_special_cases(self):
         self._compare_eval(
-                " -84 - -61 % -7 * (((94 * (91)) - 96)) % 76 ** 3 ** 2 % -20",
+                " -84 - -61 % -7 * (((94 * float(91)) - 96)) % 76 ** 3 ** 2 % -20",
                 "(-84 - -61 % -7 * (((94 * vec(91)) - 96)) % 76 ** 3 ** 2 % -20)[0]")
 
 
