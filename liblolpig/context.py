@@ -206,6 +206,17 @@ class Function(Namespaced):
             args.append(arg)
         return "%s %s(%s)" % (fargs[0], self.c_name, self.c_argument_list(args))
 
+    def c_return_statement(self, error=False):
+        if self.is_normal_function() or self.c_return_type == "PyObject*":
+            if error:
+                return "return NULL"
+            if self.is_class_method():
+                return "Py_RETURN_SELF"
+            return "Py_RETURN_NONE"
+        if self.c_return_type == "int" or self.c_return_type == "Py_ssize_t":
+            return "return -1" if error else "return 0"
+        return "return"
+
 
 class Class(Namespaced):
     def __init__(self):

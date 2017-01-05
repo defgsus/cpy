@@ -708,9 +708,10 @@ class Renderer:
         %(default_inc)s
 
         %(namespace_open)s
-
+        namespace {
+        %(class_decl)s
         %(func_decl)s
-
+        } // namespace {
         %(namespace_close)s
         """
         code = change_text_indent(code, 0)
@@ -722,6 +723,7 @@ class Renderer:
             "module_name": self.context.module_name,
             "namespace_open": self._render_namespace_open(self.namespaces),
             "namespace_close": self._render_namespace_close(self.namespaces),
+            "class_decl": self._render_export_classes(),
             "func_decl": self._render_export_funcs(),
         })
         return code
@@ -730,6 +732,9 @@ class Renderer:
         code = ""
         for f in self.functions:
             code += "\n" + self._render_export_func(f)
+        for c in self.classes:
+            for f in c.methods:
+                code += "\n" + self._render_export_func(f)
         return code
 
     def _render_export_func(self, func):
@@ -740,7 +745,7 @@ class Renderer:
         %(func_def)s
         {
             %(comment)s
-            %(return)s
+            %(return)s;
         }
         """, 0)
 
@@ -749,6 +754,36 @@ class Renderer:
             "py_doc": change_text_indent(func.py_doc, 0).strip(),
             "func_def": func.c_definition(),
             "comment": "//",
-            "return": "return NULL;",
+            "return": func.c_return_statement(),
+        })
+        return code
+
+    def _render_export_classes(self):
+        code = ""
+        for c in self.classes:
+            code += "\n" + self._render_export_class_struct(c)
+        return code
+
+    def _render_export_class_struct(self, cls):
+        code = change_text_indent("""
+        LOLPIG_DEF(%(py_name)s, (
+                %(py_doc)s
+                ))
+        struct %(c_name)s %(base_def)s
+        {
+            PyObject_HEAD
+            %(comment)s
+        };
+        // convenience functions defined by generated module
+        %(c_name)s* new_%(c_name)s();
+        bool is_%(c_name)s(PyObject*);
+        """, 0)
+
+        code = apply_string_dict(code, {
+            "py_name": cls.py_name,
+            "py_doc": change_text_indent(cls.py_doc, 0).strip(),
+            "c_name": cls.c_name,
+            "comment": "//",
+            "base_def": ": %s" % cls.bases[0].c_name if cls.bases else "",
         })
         return code
