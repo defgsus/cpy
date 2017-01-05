@@ -253,7 +253,6 @@ class Function(Namespaced):
         if not self.py_args:
             return ""
         ret = ""
-        print(self.py_args)
         defoffs = len(self.py_args.args)
         if self.py_args.defaults:
             defoffs -= len(self.py_args.defaults)
@@ -390,8 +389,8 @@ class Context:
         for c in self.classes:
             print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases])
                   + " (" + c.key() + ")")
-            #for f in c.methods:
-            #    print("    " + f.py_name + " " + str(f.get_function_type()) + " (" + f.key() + ")")
+            for f in c.methods:
+                print("    " + f.py_name + " " + str(f.get_function_type()) + " (" + f.key() + ")")
 
     def finalize(self):
         for f in self.functions:

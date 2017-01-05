@@ -16,12 +16,14 @@ class Arguments:
 mode:       %s
 input:      %s
 module:     %s
-output:     %s %s (#include "%s")
+output:     %s%s %s
 namespaces: %s
         """ % ("python -> cpp" if self.is_export else "cpp -> cpp",
                str(self.input_filenames),
                self.module_name,
-               self.output_hpp, self.output_cpp, self.header_inc,
+               self.output_hpp + " " if not self.is_export else "",
+               self.output_cpp,
+               '(#include "%s")' % self.header_inc if not self.is_export else "",
                self.namespaces
                ))
 
@@ -55,6 +57,7 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
         arg_cnt = 0
         for a in argv[1:]:
 
+            # break unlimited params on next command switch
             if expect_len < 0 and a.startswith("-") and not a == "-":
                 expect = ""
 
@@ -69,10 +72,14 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
                     self.set_output_name(a)
                 elif expect == "-m":
                     self.module_name = a
+                else:
+                    raise NotImplementedError("unimplemented switch %s" % expect)
 
                 arg_cnt += 1
-                if expect_len >= 0 and arg_cnt > expect_len:
+                if expect_len >= 0 and arg_cnt >= expect_len:
                     expect = ""
+                if not expect_len == 0:
+                    continue
 
             if not expect:
                 for cmd, le in param:
@@ -80,8 +87,7 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
                         expect = cmd
                         expect_len = le
                         arg_cnt = 0
-                        print(expect)
-                        break;
+                        break
                 else:
                     self.error("Unknown command '%s'" % a)
                     return False
@@ -136,9 +142,11 @@ def process_commands(argv=None):
         import sys
         argv = sys.argv
 
-    #argv = ["lolpig.py", "-export", "-i", "example/export/stuff.py", "-o", "example/export/pydef"]
+    #argv = ["lolpig.py", "-export", "-i", "example/export/stuff.py", "-o", "example/export/pydef", "-n", "MO", "PYTHON"]
     #-export -i example/export/stuff.py -o example/export/pydef -n MO PYTHON
     #-i vector/pyimpl/vec_base.cpp vector/pyimpl/mat_base.cpp vector/pyimpl/vec3.cpp -o vector/vec_module -n MOP -m vec
+    #argv = ["lolpig.py", "-i", "vector/pyimpl/vec_base.cpp", "vector/pyimpl/mat_base.cpp", "vector/pyimpl/vec3.cpp",
+    #        "-o", "vector/vec_module", "-n", "MOP", "-m", "vec"]
 
     a = Arguments()
     if not a.parse(argv) or not a.verify():

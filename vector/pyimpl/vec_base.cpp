@@ -78,7 +78,19 @@ PyObject* vec_str(PyObject* self)
 
 
 
+LOLPIG_DEF( vec.test@get, )
+PyObject* vec_test__getter(PyObject* self)
+{
+    //VectorBase* vec = pyobject_cast<VectorBase*>(self);
+    return toPython(23.);
+}
 
+LOLPIG_DEF( vec.test@set, )
+PyObject* vec_test__setter(PyObject* self)
+{
+    //VectorBase* vec = pyobject_cast<VectorBase*>(self);
+    return toPython(23.);
+}
 
 // ------------------------ sequence methods ---------------------------
 

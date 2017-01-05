@@ -164,8 +164,12 @@ class XmlFunction(XmlContext):
     def as_function(self):
         from .context import Function, Argument
         f = Function()
+        pyname = self.py_name.split("@")
         f.c_name = self.c_name
-        f.py_name = self.py_name
+        f.py_name = pyname[0]
+        if len(pyname) > 1:
+            f.is_property = pyname[1] == "get" or pyname[1] == "set"
+            f.is_setter = pyname[1] == "set"
         f.py_doc = self.py_doc
         f.line = self.line
         f.end_line = self.end_line
@@ -174,6 +178,7 @@ class XmlFunction(XmlContext):
         f.c_return_type = self.return_type.c_string()
         for arg in self.arguments:
             f.arguments.append(arg.as_argument())
+
         return f
 
 
@@ -515,7 +520,7 @@ class XmlParser:
         # scan first part of DEF for proper syntax
         import re
         match = None
-        for i in re.finditer(r"LOLPIG_DEF\([\s]*([A-Za-z0-9_\.]*)[\w]*,", txt):
+        for i in re.finditer(r"LOLPIG_DEF\([\s]*([A-Za-z0-9_\.@]*)[\w]*,", txt):
             match = i
             break
         if not match or not match.groups():

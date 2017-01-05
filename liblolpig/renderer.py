@@ -795,13 +795,17 @@ class Renderer:
             cmt = "none"
         cmt = "// original python args: " + cmt
 
+        doc = change_text_indent(func.py_doc, 0).strip() if func.py_doc else "XXX Please add some doc"
+
         fname = func.py_name
         if func.is_property:
-            fname += ".set" if func.is_setter else ".get"
+            fname += "@set" if func.is_setter else "@get"
+            if func.is_setter:
+                doc = "XXX doc will be taken from getter"
 
         code = apply_string_dict(code, {
             "py_name": fname,
-            "py_doc": change_text_indent(func.py_doc, 0).strip() if func.py_doc else "XXX Please add some doc",
+            "py_doc": doc,
             "func_def": func.c_definition(),
             "comment": cmt,
             "return": func.c_return_statement(),
