@@ -45,7 +45,7 @@ class Function(Namespaced):
         self.arguments = []
         self.namespaces = []
         self.is_property = False
-        self.has_setter = False
+        self.is_setter = False
         self.py_args = None
 
     def __hash__(self):

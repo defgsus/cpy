@@ -135,7 +135,10 @@ def process_commands(argv=None):
     if not argv:
         import sys
         argv = sys.argv
-    argv = ["lolpig.py", "-export", "-i", "example/export/stuff.py", "-o", "example/export/pydef"]
+
+    #argv = ["lolpig.py", "-export", "-i", "example/export/stuff.py", "-o", "example/export/pydef"]
+    #-export -i example/export/stuff.py -o example/export/pydef -n MO PYTHON
+    #-i vector/pyimpl/vec_base.cpp vector/pyimpl/mat_base.cpp vector/pyimpl/vec3.cpp -o vector/vec_module -n MOP -m vec
 
     a = Arguments()
     if not a.parse(argv) or not a.verify():

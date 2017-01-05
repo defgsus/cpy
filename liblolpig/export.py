@@ -78,17 +78,37 @@ class _Exporter:
         elif inspect.isgetsetdescriptor(o):
             print("GETSET %s" % o)
 
-    def _inspect_function(self, func, class_obj=None, pycls=None):
+    def _inspect_function(self, funcobj, class_obj=None, pycls=None):
+        func = funcobj
+        isprob = False
+        if isinstance(funcobj, property):
+            func = funcobj.fget
+            isprob = True
         name = _get_name(func)
         self.log("inspecting function '%s'" % name)
         self.push_scope(name)
         o = Function.from_python(func, pycls)
+        if not isprob:
+            self._add_function(o, class_obj)
+            self.pop_scope()
+            return
+        o.is_property = True
+        o.is_setter = False
+        o.c_name += "__getter"
+        self._add_function(o, class_obj)
+        if funcobj.fset:
+            o = Function.from_python(funcobj.fset, pycls)
+            o.is_property = True
+            o.is_setter = True
+            o.c_name += "__setter"
+            self._add_function(o, class_obj)
+        self.pop_scope()
+
+    def _add_function(self, o, class_obj):
         if not class_obj:
             self.context.functions.append(o)
         else:
             class_obj.methods.append(o)
-        self.pop_scope()
-        return o
 
     def _inspect_class(self, cls):
         name = _get_name(cls)
@@ -103,16 +123,12 @@ class _Exporter:
                 foo = mem
             elif isinstance(mem, property):
                 foo = mem.fset if mem.fset else mem.fget
-                isprop = True
             if foo:
                 qual = foo.__qualname__.split(".")
                 # skip methods which are defined in base classes
                 if len(qual) == 2 and not qual[0] == class_obj.py_name:
                     continue
-                o = self._inspect_function(foo, class_obj, cls)
-                o.is_property = isprop
-                if isprop:
-                    o.has_setter = bool(mem.fset)
+                self._inspect_function(mem, class_obj, cls)
 
         self.context.classes.append(class_obj)
         self.pop_scope()

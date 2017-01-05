@@ -795,8 +795,12 @@ class Renderer:
             cmt = "none"
         cmt = "// original python args: " + cmt
 
+        fname = func.py_name
+        if func.is_property:
+            fname += ".set" if func.is_setter else ".get"
+
         code = apply_string_dict(code, {
-            "py_name": func.py_name,
+            "py_name": fname,
             "py_doc": change_text_indent(func.py_doc, 0).strip() if func.py_doc else "XXX Please add some doc",
             "func_def": func.c_definition(),
             "comment": cmt,
