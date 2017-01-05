@@ -58,7 +58,8 @@ class Function(Namespaced):
         if pyclass:
             f.py_name = pyclass.__name__ + "." + f.py_name
         f.py_doc = inspect.cleandoc(pyfunc.__doc__) if pyfunc.__doc__ else ""
-        f.c_name = f.py_name.replace(".", "__")
+        f.c_name = f.py_name.replace(".", "_")
+        f.c_name = f.c_name.replace("___", "__")
         f.py_args = inspect.getfullargspec(pyfunc)
         f.c_return_type, f.arguments = f.get_args_from_py()
         return f
@@ -173,7 +174,7 @@ class Function(Namespaced):
             raise ParseError("No py_name defined for %s" % self)
         sig = FUNCTIONS.get(FUNCNAME_TO_TYPE.get(self.py_name_single()))
         if sig:
-           ret = (sig[0], [Argument(sig[1][x], "hallo") for x in range(len(sig[1]))])
+           ret = (sig[0], [Argument(sig[1][x], sig[2][x]) for x in range(len(sig[1]))])
         else:
             num_args = 10
             has_varkw = False
@@ -185,6 +186,10 @@ class Function(Namespaced):
                 has_vararg = bool(self.py_args.varargs)
                 if self.py_args.defaults:
                     has_varkw = True
+                if has_varkw:
+                    num_args += 1
+                if has_vararg:
+                    num_args += 1
             ret = ("PyObject*", [])
             if self.is_class_method():
                 ret[1].append(Argument("PyObject*", "self"))
@@ -224,10 +229,11 @@ class Function(Namespaced):
             raise NotImplementedError("XXX")
         fargs = FUNCTIONS[type]
         args = []
-        for a in fargs[1]:
+        assert(len(fargs[1]) == len(fargs[2]))
+        for i, a in enumerate(fargs[1]):
             arg = Argument()
             arg.c_type = a
-            arg.c_name = "" # TODO
+            arg.c_name = self.arguments[i].c_name if i < len(self.arguments) and self.arguments[i].c_name else fargs[2][i]
             args.append(arg)
         return "%s %s(%s)" % (fargs[0], self.c_name, self.c_argument_list(args))
 
@@ -243,6 +249,7 @@ class Function(Namespaced):
         return "return"
 
     def py_arguments(self):
+        """arguments as string as in a python function def"""
         if not self.py_args:
             return ""
         ret = ""
@@ -254,9 +261,13 @@ class Function(Namespaced):
             ret += ", " + a
             if i >= defoffs:
                 ret += "=" + str(self.py_args.defaults[i-defoffs])
+        if self.py_args.varargs:
+            ret += ", *" + self.py_args.varargs
         if self.py_args.varkw:
             ret += ", **" + self.py_args.varkw
         return ret[2:]
+
+
 
 class Class(Namespaced):
     def __init__(self):

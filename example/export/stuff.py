@@ -42,9 +42,15 @@ class ClassA:
         self._x = 0.
         pass
 
-    def amethod(self, a, b):
+    def amethod(self, a):
         """
-        method(string, int) -> self
+        method(string) -> self
+        A cool member function"""
+        return self
+
+    def amethod_two(self, a, b):
+        """
+        method_two(string, int) -> self
         A cool member function"""
         return self
 
@@ -63,7 +69,7 @@ class ClassA:
 class ClassB(ClassA):
     """A derived class"""
 
-    def bmethod(self, a, b):
+    def bmethod(self, a=1, b=2):
         """Another fine method"""
         pass
 
@@ -71,7 +77,7 @@ class ClassB(ClassA):
 class ClassC(ClassB):
     """A even more derived class"""
 
-    def cmethod(self, a, b):
+    def cmethod(self, *args, **kwargs):
         """And yet another fine method"""
         pass
 
