@@ -734,15 +734,28 @@ class Renderer:
 
 
     def render_export(self):
-        self.comment_conv = change_text_indent("""
-        // convenience functions defined by generated module
+        self.comment_conv = (change_text_indent("""
+        // Convenience functions defined by generated module
+        """, 0).strip(), change_text_indent("""
+        /* Access to the class type struct which is hidden in the generated module */
+        """, 0).strip(), change_text_indent("""
+        /* Allocates a new python instance.
+           User-fields in the class struct still have to be allocated */
+        """, 0).strip(), change_text_indent("""
+        /* Returns true if the given object or one of it's bases
+           is an instance of this class */
         """, 0).strip()
+        )
         self.comment_struct = change_text_indent("""
-        // Add any members you like but remember that they are not properly initialized
-        // It's best to alloc/initialize them in the __new__ function and dealloc in __dealloc__ XXX
+        /* Add any members you like but remember that they are not properly initialized.
+           It's best to alloc/initialize them in the __new__ function
+           and to dealloc them in __dealloc__ XXX */
         """, 0).strip()
         self.comment_struct_base = change_text_indent("""
-        // This struct has all members of it's base structs
+        /* Derived structs have all members of their base structs.
+           Methods defined in the base classes are derived as well.
+           Adding additonal struct members is possible but care needs
+           to be taken to allocated/initialize them properly*/
         """, 0).strip()
 
         code = """
@@ -851,21 +864,31 @@ class Renderer:
             %(head)s
             %(comment)s
         };
-        %(comment2)s
-        %(c_name)s* new_%(c_name)s();
-        bool is_%(c_name)s(PyObject*);
+        %(comment_c1)s
+        %(comment_c2)s
+        _typeobject* %(type_func)s();
+        %(comment_c3)s
+        %(c_name)s* %(new_func)s();
+        %(comment_c4)s
+        bool %(is_func)s(PyObject*);
         """, 0)
 
         code = apply_string_dict(code, {
             "py_name": cls.py_name,
             "py_doc": change_text_indent(cls.py_doc, 0).strip() if cls.py_doc else "XXX Please add some doc",
             "c_name": cls.c_name,
+            "type_func": cls.user_type_func,
+            "new_func": cls.user_new_func,
+            "is_func": cls.user_is_func,
             "head": "PyObject_HEAD" if not cls.bases else "",
             "comment": self.comment_struct_base if cls.bases else self.comment_struct,
-            "comment2": self.comment_conv,
+            "comment_c1": self.comment_conv[0] if self.comment_conv else "",
+            "comment_c2": self.comment_conv[1] if self.comment_conv else "",
+            "comment_c3": self.comment_conv[2] if self.comment_conv else "",
+            "comment_c4": self.comment_conv[3] if self.comment_conv else "",
             "base_def": ": public %s" % cls.bases[0].c_name if cls.bases else "",
         })
-        self.comment_conv = ""
+        self.comment_conv = None
         if cls.bases:
             self.comment_struct_base = ""
         else:
