@@ -26,9 +26,9 @@ class Namespaced:
 
 
 class Argument:
-    def __init__(self):
-        self.c_name = ""
-        self.c_type = ""
+    def __init__(self, c_type="", c_name=""):
+        self.c_name = c_name
+        self.c_type = c_type
 
 
 class Function(Namespaced):
@@ -45,6 +45,17 @@ class Function(Namespaced):
 
     def __hash__(self):
         return hash(self.c_name)
+
+    @classmethod
+    def from_python(cls, pyfunc, pyclass=None):
+        f = Function()
+        f.py_name = pyfunc.__name__
+        if pyclass:
+            f.py_name = pyclass.__name__ + "." + f.py_name
+        f.py_doc = pyfunc.__doc__ if pyfunc.__doc__ else ""
+        f.c_name = f.py_name.replace(".", "__")
+        f.c_return_type, f.arguments = f.get_args_from_pyname()
+        return f
 
     @property
     def full_c_name(self):
@@ -150,6 +161,19 @@ class Function(Namespaced):
             return "METH_NOARGS"
         return "METH_VARARGS"
 
+    def get_args_from_pyname(self):
+        """Return tuple of (c_return_type, [Argument,]) from inspecting py_name"""
+        if not self.py_name:
+            return None
+        sig = FUNCTIONS.get(FUNCNAME_TO_TYPE.get(self.py_name_single()))
+        if sig:
+           ret = (sig[0], [Argument(sig[1][x], "hallo") for x in range(len(sig[1]))])
+        else:
+            ret = ("PyObject*", [Argument("PyObject*", "args"), ],)
+            if self.is_class_method():
+                ret[1].insert(0, Argument("PyObject*", "self"))
+        return ret
+
     def verify(self):
         type = self.get_function_type()
         if not type:
@@ -197,6 +221,14 @@ class Class(Namespaced):
 
     def __hash__(self):
         return hash(self.c_name)
+
+    @classmethod
+    def from_python(cls, pyclass):
+        c = Class()
+        c.py_name = pyclass.__name__
+        c.py_doc = pyclass.__doc__ if pyclass.__doc__ else ""
+        c.c_name = str(c.py_name)
+        return c
 
     def finalize(self):
         self._update_names()
