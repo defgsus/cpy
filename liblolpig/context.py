@@ -52,7 +52,7 @@ class Function(Namespaced):
         return hash(self.c_name)
 
     @classmethod
-    def from_python(cls, pyfunc, pyclass=None):
+    def from_python(cls, pyfunc, pyclass=None, is_prop=False, is_set=False):
         f = Function()
         f.py_name = pyfunc.__name__
         if pyclass:
@@ -61,6 +61,8 @@ class Function(Namespaced):
         f.c_name = f.py_name.replace(".", "_")
         f.c_name = f.c_name.replace("___", "__")
         f.py_args = inspect.getfullargspec(pyfunc)
+        f.is_property = is_prop
+        f.is_setter = is_set
         f.c_return_type, f.arguments = f.get_args_from_py()
         return f
 
@@ -103,6 +105,8 @@ class Function(Namespaced):
         return not (self.is_type_function() or self.is_number_function() or self.is_sequence_function())
 
     def is_special_function(self, func_list):
+        if self.is_property:
+            return True
         n = self.py_name_single()
         for f in func_list:
             if n == f[0]:
@@ -120,6 +124,8 @@ class Function(Namespaced):
 
     def get_function_type(self):
         """Returns the type of function, e.g 'unary', 'lenfunc', etc.."""
+        if self.is_property:
+            return "setter" if self.is_setter else "getter"
         n = self.py_name_single()
         # see if function's name requires special signature
         if self.is_class_method():
@@ -170,9 +176,13 @@ class Function(Namespaced):
 
     def get_args_from_py(self):
         """Return tuple of (c_return_type, [Argument,]) from inspecting py_name and/or py_args"""
+        sig = None
+        if self.is_property:
+            sig = FUNCTIONS.get("setter") if self.is_setter else FUNCTIONS.get("getter")
         if not self.py_name:
             raise ParseError("No py_name defined for %s" % self)
-        sig = FUNCTIONS.get(FUNCNAME_TO_TYPE.get(self.py_name_single()))
+        if not sig:
+            sig = FUNCTIONS.get(FUNCNAME_TO_TYPE.get(self.py_name_single()))
         if sig:
            ret = (sig[0], [Argument(sig[1][x], sig[2][x]) for x in range(len(sig[1]))])
         else:
@@ -201,7 +211,6 @@ class Function(Namespaced):
                 ret[1].append(Argument("PyObject*", aname))
                 if has_varkw:
                     ret[1].append(Argument("PyObject*", "kwargs"))
-
         return ret
 
     def verify(self):
@@ -214,8 +223,8 @@ class Function(Namespaced):
                 self.c_name, self.c_return_type, args[0], self.render_ideal()
             ))
         if not len(self.arguments) == len(args[1]):
-            raise TypeError("Function %s has wrong number of arguments, expected %d\nshould be like: %s" % (
-                self.c_name, len(args[1]), self.render_ideal()
+            raise TypeError("Function %s has wrong number of arguments %d, expected %d\nshould be like: %s" % (
+                self.c_name, len(self.arguments), len(args[1]), self.render_ideal()
             ))
         for i, a in enumerate(args[1]):
             if not self.arguments[i].c_type == a:
@@ -305,13 +314,24 @@ class Class(Namespaced):
             if not self.bases:
                 self.bases = i.bases
 
-    @property
-    def nonderived_methods(self):
-        if not self.bases:
-            return self.methods
-        m = []
-        #for f in self.methods:
-
+    def properties(self):
+        """Returns all Functions which are properties"""
+        p = []
+        for f in self.methods:
+            if f.is_property:
+                tup = None
+                for i in p:
+                    if i[0].py_name == f.py_name or i[1].py_name == f.py_name:
+                        tup = i
+                        break
+                if not tup:
+                    tup = [None, None]
+                    p.append(tup)
+                if f.is_setter:
+                    tup[1] = f
+                else:
+                    tup[0] = f
+        return p
 
     def _update_names(self):
         self.class_struct_name = self.c_name
@@ -328,6 +348,7 @@ class Class(Namespaced):
         self.doc_string_name = "%s_doc_string" % self.c_name
         self.user_new_func = "new_%s" % self.c_name
         self.user_is_func = "is_%s" % self.c_name
+        self.user_type_func = "type_%s" % self.c_name
 
     def _update_methods(self):
         self.normal_methods = []

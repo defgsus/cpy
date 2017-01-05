@@ -77,20 +77,21 @@ PyObject* vec_str(PyObject* self)
 }
 
 
-
+/*
 LOLPIG_DEF( vec.test@get, )
-PyObject* vec_test__getter(PyObject* self)
+PyObject* vec_test__getter(PyObject* self, void*)
 {
     //VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(23.);
 }
 
 LOLPIG_DEF( vec.test@set, )
-PyObject* vec_test__setter(PyObject* self)
+int vec_test__setter(PyObject* self, PyObject* arg, void*)
 {
     //VectorBase* vec = pyobject_cast<VectorBase*>(self);
-    return toPython(23.);
+    return 0;
 }
+*/
 
 // ------------------------ sequence methods ---------------------------
 

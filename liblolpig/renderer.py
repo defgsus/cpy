@@ -556,6 +556,11 @@ class Renderer:
             code += "/* https://docs.python.org/3/c-api/typeobj.html#sequence-object-structures */\n"
             code += self._render_class_sequence_struct(cls)
 
+        # properties
+        if cls.properties:
+            code += "\n\n/* ----- %s properties -------- */\n" % cls.py_name
+            code += self._render_class_getset_struct(cls)
+
         # init/dealloc
         code += "\n" + self._render_class_init_funcs(cls)
 
@@ -583,6 +588,20 @@ class Renderer:
                 dic.update({i[1]: val})
         return render_struct("PySequenceMethods", PySequenceMethods, cls.sequence_struct_name, dic)
 
+    def _render_class_getset_struct(self, cls):
+        code = "static PyGetSetDef %s[] =\n{\n" % cls.getset_struct_name
+        for i in cls.properties():
+            name = to_c_string(i[0].py_name_single())
+            doc = to_c_string(change_text_indent(i[0].py_doc, 0).strip())
+            get = i[0].full_c_name
+            set = i[1].full_c_name if i[1] else "NULL"
+            line = '{ const_cast<char*>("%s"), static_cast<getter>(%s), static_cast<setter>(%s), const_cast<char*>("%s"), NULL },\n'  % (
+                name, get, set, doc,
+            )
+            code += INDENT + line
+        code += "\n" + INDENT + "{ NULL, NULL, NULL, NULL, NULL }\n};\n"
+        return code
+
     def _render_class_type_struct(self, cls):
         dic = {}
         for i in PyTypeObject:
@@ -608,8 +627,8 @@ class Renderer:
             dic.update({"tp_as_sequence": "&" + cls.sequence_struct_name})
         if cls.has_number_method():
             dic.update({"tp_as_number": "&" + cls.number_struct_name})
-        #if self.properties:
-        #    dic.update({"tp_getset": self.getset_struct_name})
+        if cls.properties:
+            dic.update({"tp_getset": cls.getset_struct_name})
 
         return "/* https://docs.python.org/3/c-api/typeobj.html */\n" + \
                 render_struct("PyTypeObject", PyTypeObject,
@@ -690,6 +709,7 @@ class Renderer:
 
     def _render_class_user_funcs(self, cls):
         code = """
+        _typeobject* %(type_func)s() { return &%(type_struct)s; }
         %(struct)s* %(new_func)s() { return PyObject_NEW(%(struct)s, &%(type_struct)s); }
         bool %(is_func)s(PyObject* obj) { return PyObject_TypeCheck(obj, &%(type_struct)s); }
         """
@@ -701,6 +721,7 @@ class Renderer:
                            cls.type_struct_name,
             "new_func": cls.user_new_func,
             "is_func": cls.user_is_func,
+            "type_func": cls.user_type_func,
         }
         return code
 

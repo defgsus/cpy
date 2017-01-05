@@ -87,19 +87,16 @@ class _Exporter:
         name = _get_name(func)
         self.log("inspecting function '%s'" % name)
         self.push_scope(name)
-        o = Function.from_python(func, pycls)
         if not isprob:
+            o = Function.from_python(func, pycls)
             self._add_function(o, class_obj)
             self.pop_scope()
             return
-        o.is_property = True
-        o.is_setter = False
+        o = Function.from_python(func, pycls, True, False)
         o.c_name += "__getter"
         self._add_function(o, class_obj)
         if funcobj.fset:
-            o = Function.from_python(funcobj.fset, pycls)
-            o.is_property = True
-            o.is_setter = True
+            o = Function.from_python(funcobj.fset, pycls, True, True)
             o.c_name += "__setter"
             self._add_function(o, class_obj)
         self.pop_scope()
