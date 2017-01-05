@@ -55,6 +55,7 @@ class _Exporter:
         self.push_scope(mod_name)
         self._inspect_names(module, dir(module))
         self.pop_scope()
+        self._resolve_classes()
         self.context.finalize()
 
     def _inspect_names(self, parent, names):
@@ -87,31 +88,45 @@ class _Exporter:
         else:
             class_obj.methods.append(o)
         self.pop_scope()
-
-    def _inspect_property(self, prop, class_obj):
-        return
-        name = _get_name(prop)
-        self.log("inspecting property '%s'" % name)
-        self.push_scope(name)
-        p = Property(self.context, prop, class_obj)
-        class_obj.properties.append(p)
-        self.pop_scope()
+        return o
 
     def _inspect_class(self, cls):
         name = _get_name(cls)
         self.log("inspecting class '%s'" % name)
         self.push_scope(name)
+
         class_obj = Class.from_python(cls)
         for n, mem in inspect.getmembers(cls):
+            foo = None
+            isprop = False
             if inspect.isfunction(mem):
-                self._inspect_function(mem, class_obj, cls)
+                foo = mem
             elif isinstance(mem, property):
-                self._inspect_property(mem, class_obj)
+                foo = mem.fset if mem.fset else mem.fget
+                isprop = True
+            if foo:
+                qual = foo.__qualname__.split(".")
+                # skip methods which are defined in base classes
+                if len(qual) == 2 and not qual[0] == class_obj.py_name:
+                    continue
+                o = self._inspect_function(foo, class_obj, cls)
+                o.is_property = isprop
+                if isprop:
+                    o.has_setter = bool(mem.fset)
 
         self.context.classes.append(class_obj)
         self.pop_scope()
 
-
+    def _resolve_classes(self):
+        for c in self.context.classes:
+            c.bases = []
+            for b in c.py_class.__bases__:
+                bname = _get_name(b)
+                if bname == "object":
+                    continue
+                for i in self.context.classes:
+                    if bname == i.py_name:
+                        c.bases.append(i)
 
 
 def scan_module(module):

@@ -1,4 +1,6 @@
+import inspect
 from .c_types import *
+from .xml import ParseError
 
 class Namespaced:
     def __init__(self):
@@ -42,6 +44,9 @@ class Function(Namespaced):
         self.c_return_type = ""
         self.arguments = []
         self.namespaces = []
+        self.is_property = False
+        self.has_setter = False
+        self.py_args = None
 
     def __hash__(self):
         return hash(self.c_name)
@@ -52,9 +57,10 @@ class Function(Namespaced):
         f.py_name = pyfunc.__name__
         if pyclass:
             f.py_name = pyclass.__name__ + "." + f.py_name
-        f.py_doc = pyfunc.__doc__ if pyfunc.__doc__ else ""
+        f.py_doc = inspect.cleandoc(pyfunc.__doc__) if pyfunc.__doc__ else ""
         f.c_name = f.py_name.replace(".", "__")
-        f.c_return_type, f.arguments = f.get_args_from_pyname()
+        f.py_args = inspect.getfullargspec(pyfunc)
+        f.c_return_type, f.arguments = f.get_args_from_py()
         return f
 
     @property
@@ -161,17 +167,36 @@ class Function(Namespaced):
             return "METH_NOARGS"
         return "METH_VARARGS"
 
-    def get_args_from_pyname(self):
-        """Return tuple of (c_return_type, [Argument,]) from inspecting py_name"""
+    def get_args_from_py(self):
+        """Return tuple of (c_return_type, [Argument,]) from inspecting py_name and/or py_args"""
         if not self.py_name:
-            return None
+            raise ParseError("No py_name defined for %s" % self)
         sig = FUNCTIONS.get(FUNCNAME_TO_TYPE.get(self.py_name_single()))
         if sig:
            ret = (sig[0], [Argument(sig[1][x], "hallo") for x in range(len(sig[1]))])
         else:
-            ret = ("PyObject*", [Argument("PyObject*", "args"), ],)
+            num_args = 10
+            has_varkw = False
+            has_vararg = False
+            if self.py_args:
+                #print(self.py_args)
+                num_args = len(self.py_args.args)
+                has_varkw = bool(self.py_args.varkw)
+                has_vararg = bool(self.py_args.varargs)
+                if self.py_args.defaults:
+                    has_varkw = True
+            ret = ("PyObject*", [])
             if self.is_class_method():
-                ret[1].insert(0, Argument("PyObject*", "self"))
+                ret[1].append(Argument("PyObject*", "self"))
+                num_args -= 1
+            if num_args:
+                aname = "obj"
+                if num_args > 1 or has_vararg or has_varkw:
+                    aname = "args"
+                ret[1].append(Argument("PyObject*", aname))
+                if has_varkw:
+                    ret[1].append(Argument("PyObject*", "kwargs"))
+
         return ret
 
     def verify(self):
@@ -217,6 +242,21 @@ class Function(Namespaced):
             return "return -1" if error else "return 0"
         return "return"
 
+    def py_arguments(self):
+        if not self.py_args:
+            return ""
+        ret = ""
+        print(self.py_args)
+        defoffs = len(self.py_args.args)
+        if self.py_args.defaults:
+            defoffs -= len(self.py_args.defaults)
+        for i, a in enumerate(self.py_args.args):
+            ret += ", " + a
+            if i >= defoffs:
+                ret += "=" + str(self.py_args.defaults[i-defoffs])
+        if self.py_args.varkw:
+            ret += ", **" + self.py_args.varkw
+        return ret[2:]
 
 class Class(Namespaced):
     def __init__(self):
@@ -237,8 +277,9 @@ class Class(Namespaced):
     def from_python(cls, pyclass):
         c = Class()
         c.py_name = pyclass.__name__
-        c.py_doc = pyclass.__doc__ if pyclass.__doc__ else ""
+        c.py_doc = inspect.cleandoc(pyclass.__doc__) if pyclass.__doc__ else ""
         c.c_name = str(c.py_name)
+        c.py_class = pyclass
         return c
 
     def finalize(self):
@@ -253,6 +294,14 @@ class Class(Namespaced):
                 self.methods.append(i)
             if not self.bases:
                 self.bases = i.bases
+
+    @property
+    def nonderived_methods(self):
+        if not self.bases:
+            return self.methods
+        m = []
+        #for f in self.methods:
+
 
     def _update_names(self):
         self.class_struct_name = self.c_name

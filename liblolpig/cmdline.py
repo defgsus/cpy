@@ -128,7 +128,7 @@ def _render_export(a):
 
     r = Renderer(ctx)
     r.namespaces = a.namespaces
-    print(r.render_export())
+    r.write_to_file(a.output_cpp, r.render_export())
 
 
 def process_commands(argv=None):
