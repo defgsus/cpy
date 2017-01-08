@@ -1,6 +1,8 @@
 """
 Doxygen-XML parser
 """
+import os, subprocess, tempfile
+from xml.etree import ElementTree as ET
 
 class ParseError(BaseException):
     pass
@@ -35,49 +37,6 @@ class XmlNamespace(XmlContext):
         return self.__str__()
 
 
-class XmlClass(XmlContext):
-    def __init__(self):
-        super().__init__()
-        self.c_name = None
-
-
-class XmlType(XmlContext):
-    def __init__(self):
-        super().__init__()
-        self.c_name = None
-        self.size = 0
-        self.array_min = 0
-        self.array_max = 0
-        self.ref_id = None
-        self.ref = None
-        self.is_fundamental = True
-        self.is_pointer = False
-        self.is_const = False
-        self.is_reference = False
-        self.is_array = False
-        self.is_function = False
-        self.is_union = False
-        self.is_typedef = False
-        self.is_enum = False
-
-    def __str__(self):
-        return "XmlType(%s)" % self.c_string()
-
-    def __repr__(self):
-        return self.__str__()
-
-    def c_string(self):
-        s = ""
-        if self.is_const:
-            s += "const "
-        s += self.c_name if self.c_name else self.id
-        if self.is_reference:
-            s += "&"
-        if self.is_pointer:
-            s += "*"
-        return s
-
-
 class XmlStruct(XmlContext):
     def __init__(self):
         super().__init__()
@@ -101,36 +60,8 @@ class XmlStruct(XmlContext):
         c.line = self.line
         c.struct_size = self.size
         c.namespaces = self.get_namespace_list()
-        c.mangled = self.mangled
         return c
 
-
-class XmlField(XmlContext):
-    def __init__(self):
-        super().__init__()
-        self.c_name = None
-        self.type = None
-        self.type_id = None
-
-
-class XmlArgument:
-    def __init__(self):
-        self.c_name = None
-        self.type_id = None
-        self.type = None
-
-    def __str__(self):
-        return "Arg(%s %s)" % (self.c_name, self.type)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def as_argument(self):
-        from .context import Argument
-        a = Argument()
-        a.c_name = self.c_name
-        a.c_type = self.type.c_string()
-        return a
 
 
 class XmlFunction(XmlContext):
@@ -165,10 +96,11 @@ class XmlFunction(XmlContext):
         f.line = self.line
         f.end_line = self.end_line
         f.namespaces = self.get_namespace_list()
-        f.mangled = self.mangled
-        f.c_return_type = self.return_type.c_string()
+        f.c_return_type = self.return_type
         for arg in self.arguments:
-            f.arguments.append(arg.as_argument())
+            a = Argument()
+            a.c_type, a.c_name = arg
+            f.arguments.append(a)
 
         return f
 
@@ -218,6 +150,7 @@ class DoxygenParser:
     def dump(self):
         print("namespaces", self.namespaces)
         print("types", self.types)
+        print("structs", self.structs)
         print("functions", self.functions)
 
     def as_context(self):
@@ -337,12 +270,14 @@ class DoxygenParser:
 
     def _parse(self, filenames):
         """Generate doxygen-xml and parse it"""
-        import os, subprocess, tempfile
 
         doxygen_config = """
         INPUT                  = %(filenames)s
         INPUT_ENCODING         = UTF-8
         RECURSIVE              = NO
+        QUIET                  = YES
+        WARNINGS               = NO
+        WARN_IF_UNDOCUMENTED   = NO
 
         GENERATE_HTML          = NO
         GENERATE_LATEX         = NO
@@ -379,7 +314,6 @@ class DoxygenParser:
         GENERATE_TESTLIST      = NO
         GENERATE_BUGLIST       = NO
         GENERATE_DEPRECATEDLIST= NO
-        WARN_IF_UNDOCUMENTED   = NO
 
         ENABLE_PREPROCESSING   = YES
         MACRO_EXPANSION        = YES
@@ -394,6 +328,7 @@ class DoxygenParser:
         """
 
         with tempfile.TemporaryDirectory() as xml_dir:
+            self.xml_dir = os.path.join(xml_dir, "xml")
             # create config file
             doxygen_config %= {
                "filenames": " ".join(filenames),
@@ -421,32 +356,36 @@ class DoxygenParser:
                 for root, dirs, files in os.walk(xml_dir):
                     for f in files:
                         if f.startswith("group__") and f.endswith(".xml"):
-                            self.push_stack("scanning %s" % f)
                             group_name = f[7:f.index(".xml")]
                             if group_name in self.group_names:
-                                self._parse_group_xml(os.path.join(root, f))
-                            self.pop_stack()
+                                self._parse_doxy_xml(os.path.join(root, f))
             except IOError as e:
                 self.error(str(e))
             self.pop_stack()
 
             self.filenames = filenames
 
-
-    def _parse_group_xml(self, filename):
-        import xml.etree.ElementTree as ET
+    def _parse_doxy_xml(self, filename):
+        self.push_stack("scanning xml %s" % filename)
         root = ET.parse(filename).getroot()
         comp = root.find("compounddef")
         if not comp:
-            raise ParseError("No compounddef found in group xml")
+            self.error("No compounddef found in xml")
+        kind = comp.attrib.get("kind", "")
+        if kind == "struct":
+            self._parse_struct(comp)
+            return
         for child in comp:
             #print(child.tag)
-            if child.tag == "sectiondef":
+            if child.tag == "innerclass":
+                self._parse_innerclass(child)
+            elif child.tag == "sectiondef":
                 for mem in child:
                     if mem.tag == "memberdef":
                         self.push_stack("sectiondef.memberdef %s" % mem.get("id", "unknown"))
                         self._parse_section_member(mem)
                         self.pop_stack()
+        self.pop_stack()
 
     def _parse_section_member(self, root):
         if not "kind" in root.attrib:
@@ -478,7 +417,8 @@ class DoxygenParser:
             py_doc += doc
         if node.tag == "computeroutput":
             py_doc = self.py_tag_open + py_doc + self.py_tag_close
-        py_doc += node.tail.strip()
+        if node.tail:
+            py_doc += node.tail.strip()
         return py_doc
 
     def _get_doc(self, node):
@@ -497,7 +437,7 @@ class DoxygenParser:
             if doc:
                 py_doc = doc + "\n" + py_doc
 
-        print("DOC[%s][%s]" % (py_name, py_doc))
+        return py_name, py_doc
 
     def _get_type(self, node):
         tnode = node.find("type")
@@ -507,13 +447,35 @@ class DoxygenParser:
 
     def _parse_function(self, node):
         o = XmlFunction()
+        o.c_name = node.find("name").text
+        self.push_stack("parsing function %s" % o.c_name)
         o.id = node.attrib["id"]
         o.return_type = self._get_type(node)
-        o.c_name = node.find("name").text
-        o.py_doc = self._get_doc(node)
+        o.py_name, o.py_doc = self._get_doc(node)
+        self.push_stack("parsing arguments")
         for i in node.iterfind("param"):
             o.arguments.append((self._get_type(i), i.find("declname").text))
+        self.pop_stack()
+        self.pop_stack()
         self.functions.setdefault(o.id, o)
+
+    def _parse_innerclass(self, node):
+        self.push_stack("parse <innerclass>")
+        refid = node.attrib.get("refid", None)
+        if not refid:
+            self.error("refid not found")
+        self._parse_doxy_xml(os.path.join(self.xml_dir, "%s.xml" % refid))
+
+
+    def _parse_struct(self, node):
+        o = XmlStruct()
+        o.id = node.attrib.get("id")
+        o.c_name = node.find("compoundname").text
+        self.push_stack("parsing struct %s" % o.c_name)
+        o.py_name, o.py_doc = self._get_doc(node)
+        self.pop_stack()
+        self.structs.setdefault(o.id, o)
+
 
     """
     def _parse_context(self, node, ctx):
