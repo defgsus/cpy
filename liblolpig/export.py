@@ -1,7 +1,7 @@
 import os, inspect
 from importlib.machinery import SourceFileLoader
 from .context import Context, Function, Class
-from .xml import ParseError
+from .gccxml import ParseError
 
 def _get_name(obj):
     try:

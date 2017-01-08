@@ -10,6 +10,7 @@ class Arguments:
         self.input_filenames = []
         self.namespaces = []
         self.is_export = False
+        self.is_doxygen = False
 
     def dump(self):
         print("""
@@ -51,7 +52,7 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
         if not argv:
             import sys
             argv = sys.argv
-        param = [("-i", -1), ("-n", -1), ("-o", 1), ("-m", 1), ("-export", 0)]
+        param = [("-i", -1), ("-n", -1), ("-o", 1), ("-m", 1), ("-export", 0), ("-doxygen", 0)]
         expect = ""
         expect_len = 0
         arg_cnt = 0
@@ -64,6 +65,8 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
             if expect:
                 if expect == "-export":
                     self.is_export = True
+                elif expect == "-doxygen":
+                    self.is_doxygen = True
                 elif expect == "-i":
                     self.input_filenames.append(a)
                 elif expect == "-n":
@@ -100,13 +103,12 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
         self.header_inc = os.path.basename(self.output_hpp)
 
 
-def _render_module(a):
-    """Renders the module code from scanning cpp files"""
-    from liblolpig import XmlParser, Context, Renderer
+def _get_gcc_xml(filenames):
+    from liblolpig import XmlParser, Context
 
     ctx = Context()
 
-    for fn in a.input_filenames:
+    for fn in filenames:
         print("parsing %s ..." % fn)
         p = XmlParser()
         p.parse(fn)
@@ -115,6 +117,24 @@ def _render_module(a):
         #c.dump()
         ctx.merge(c)
     ctx.finalize()
+    return ctx
+
+def _get_doxygen(filenames):
+    from liblolpig import DoxygenParser
+    p = DoxygenParser()
+    p.parse_files(filenames)
+
+    return p.as_context()
+
+
+def _render_module(a):
+    """Renders the module code from scanning cpp files"""
+    from liblolpig import Renderer
+
+    if a.is_doxygen:
+        ctx = _get_doxygen(a.input_filenames)
+    else:
+        ctx = _get_gcc_xml(a.input_filenames)
 
     ctx.module_name = a.module_name
     ctx.header_name = a.header_inc
@@ -142,11 +162,11 @@ def process_commands(argv=None):
         import sys
         argv = sys.argv
 
-    #argv = ["lolpig.py", "-export", "-i", "example/export/stuff.py", "-o", "example/export/pydef", "-n", "MO", "PYTHON"]
     #-export -i example/export/stuff.py -o example/export/pydef -n MO PYTHON
-    #-i vector/pyimpl/vec_base.cpp vector/pyimpl/mat_base.cpp vector/pyimpl/vec3.cpp -o vector/vec_module -n MOP -m vec
-    #argv = ["lolpig.py", "-i", "vector/pyimpl/vec_base.cpp", "vector/pyimpl/mat_base.cpp", "vector/pyimpl/vec3.cpp",
-    #        "-o", "vector/vec_module", "-n", "MOP", "-m", "vec"]
+    #s = "-i vector/pyimpl/vec_base.cpp vector/pyimpl/mat_base.cpp vector/pyimpl/vec3.cpp -o vector/vec_module -n MOP -m vec"
+    #s = "-doxygen -i test_doxygen/code/vec_base.h -o test_doxygen/gen/vec_module -n MOP -m vec"
+    #argv = ["lolpig.py", ] + s.split()
+
 
     a = Arguments()
     if not a.parse(argv) or not a.verify():

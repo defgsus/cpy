@@ -1,6 +1,6 @@
 import inspect
 from .c_types import *
-from .xml import ParseError
+from .gccxml import ParseError
 
 class Namespaced:
     def __init__(self):
