@@ -5,8 +5,8 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
-#include "../py_utils.h"
 #include <functional>
+#include "../py_utils.h"
 
 #if 0
 #   define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }

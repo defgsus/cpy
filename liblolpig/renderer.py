@@ -258,6 +258,7 @@ class Renderer:
         if not context:
             raise ValueError("No context given to Renderer")
         self.is_gccxml = False
+        self.is_doxygen_group_created = False
         self.context = context
         self.namespaces = []
         self.default_inc = change_text_indent("""
@@ -737,16 +738,18 @@ class Renderer:
 
 
     def render_export(self):
-        self.comment_conv = (change_text_indent("""
+        self.comment_conv = ("\n"+change_text_indent("""
         // Convenience functions defined by generated module
-        """, 0).strip(), change_text_indent("""
+        """, 0).strip(), "\n"+change_text_indent("""
         /* Access to the class type struct which is hidden in the generated module */
-        """, 0).strip(), change_text_indent("""
+        """, 0).strip(), "\n"+change_text_indent("""
         /* Allocates a new python instance.
            User-fields in the class struct still have to be allocated */
-        """, 0).strip(), change_text_indent("""
+        """, 0).strip(), "\n"+change_text_indent("""
         /* Returns true if the given object or one of it's bases
            is an instance of this class */
+        """, 0).strip(), "\n"+change_text_indent("""
+        /* This is required by the generated module. */
         """, 0).strip()
         )
         self.comment_struct = change_text_indent("""
@@ -756,9 +759,9 @@ class Renderer:
         """, 0).strip()
         self.comment_struct_base = change_text_indent("""
         /* Derived structs have all members of their base structs.
-           Methods defined in the base classes are derived as well.
-           Adding additonal struct members is possible but care needs
-           to be taken to allocated/initialize them properly*/
+           Methods and properties defined in the base classes are derived as well.
+           Adding additional struct members is possible but care needs
+           to be taken to allocate/initialize them properly*/
         """, 0).strip()
 
         code = """
@@ -766,11 +769,7 @@ class Renderer:
 
         %(default_inc)s
 
-        // macro to hide lolpig annotation from c compiler
-        #ifndef LOLPIG_DEF
-        #   define LOLPIG_DEF(name, doc)
-        #endif
-
+        %(lolpig_macro)s
         // returns a PyObject* after incrementing it's reference count
         #ifndef Py_RETURN_OBJECT
         #   define Py_RETURN_OBJECT(obj__) return Py_INCREF(obj__), reinterpret_cast<PyObject*>(obj__)
@@ -791,8 +790,17 @@ class Renderer:
         """
         code = change_text_indent(code, 0)
 
+        macro = ""
+        if self.is_gccxml:
+            macro = change_text_indent("""
+            // macro to hide lolpig annotation from c compiler
+            #ifndef LOLPIG_DEF
+            #   define LOLPIG_DEF(name, doc)
+            #endif""", 0)
+
         code = apply_string_dict(code, {
             "lolpig_head": self._lolpig_head(),
+            "lolpig_macro": macro,
             "default_inc": self.default_inc,
             "module_name": self.context.module_name,
             "namespace_open": self._render_namespace_open(self.namespaces),
@@ -817,14 +825,13 @@ class Renderer:
 
     def _render_export_func(self, func):
         code = change_text_indent("""
-        LOLPIG_DEF(%(py_name)s, (
-                %(py_doc)s
-                ))
+        %(annotation)s
         %(func_def)s
         {
             %(comment)s
             %(return)s;
         }
+        %(end_annotation)s
         """, 0)
 
         cmt = func.py_arguments()
@@ -832,17 +839,18 @@ class Renderer:
             cmt = "none"
         cmt = "// original python args: " + cmt
 
-        doc = change_text_indent(func.py_doc, 0).strip() if func.py_doc else "XXX Please add some doc"
-
+        doc = func.py_doc
         fname = func.py_name
+
         if func.is_property:
             fname += "@set" if func.is_setter else "@get"
             if func.is_setter:
                 doc = "XXX doc will be taken from getter"
 
         code = apply_string_dict(code, {
+            "annotation": self._render_annotation(fname, doc),
+            "end_annotation": self._render_end_annotation(),
             "py_name": fname,
-            "py_doc": doc,
             "func_def": func.c_definition(),
             "comment": cmt,
             "return": func.c_return_statement(),
@@ -859,14 +867,15 @@ class Renderer:
 
     def _render_export_class_struct(self, cls):
         code = change_text_indent("""
-        LOLPIG_DEF(%(py_name)s, (
-                %(py_doc)s
-                ))
+        %(annotation)s
         struct %(c_name)s %(base_def)s
         {
             %(head)s
             %(comment)s
         };
+        %(end_annotation)s
+        %(comment_c5)s
+        size_t sizeof_%(c_name)s() { return sizeof(%(c_name)s); }
         %(comment_c1)s
         %(comment_c2)s
         _typeobject* %(type_func)s();
@@ -877,14 +886,16 @@ class Renderer:
         """, 0)
 
         code = apply_string_dict(code, {
+            "annotation": self._render_annotation(cls.py_name, cls.py_doc),
+            "end_annotation": self._render_end_annotation(),
             "py_name": cls.py_name,
-            "py_doc": change_text_indent(cls.py_doc, 0).strip() if cls.py_doc else "XXX Please add some doc",
             "c_name": cls.c_name,
             "type_func": cls.user_type_func,
             "new_func": cls.user_new_func,
             "is_func": cls.user_is_func,
             "head": "PyObject_HEAD" if not cls.bases else "",
             "comment": self.comment_struct_base if cls.bases else self.comment_struct,
+            "comment_c5": self.comment_conv[4] if self.comment_conv else "",
             "comment_c1": self.comment_conv[0] if self.comment_conv else "",
             "comment_c2": self.comment_conv[1] if self.comment_conv else "",
             "comment_c3": self.comment_conv[2] if self.comment_conv else "",
@@ -898,7 +909,34 @@ class Renderer:
             self.comment_struct = ""
         return code
 
-    #def _render_annotation(self, py_name, py_doc):
-    #    LOLPIG_DEF(%(py_name)s, (
-    #            %(py_doc)s
-    #            ))
+    def _render_annotation(self, py_name, py_doc):
+        py_doc = change_text_indent(py_doc, 0).strip() if py_doc else "XXX Please add some doc"
+        if self.is_gccxml:
+            code = """
+            LOLPIG_DEF(%(py_name)s, (
+                %(py_doc)s
+            ))"""
+        else:
+            if self.is_doxygen_group_created:
+                code = """
+                /** @ingroup lolpig
+                    @p %(py_name)s
+                    %(py_doc)s
+                */"""
+            else:
+                code = """
+                /** @addtogroup lolpig
+                    @{ */
+
+                /** @p %(py_name)s
+                    %(py_doc)s
+                */"""
+            py_doc = py_doc.replace("\n", " \\n\n")
+        code = change_text_indent(code, 0)
+        return apply_string_dict(code, {"py_name":py_name, "py_doc":py_doc})
+
+    def _render_end_annotation(self):
+        if self.is_gccxml or self.is_doxygen_group_created:
+            return ""
+        self.is_doxygen_group_created = True
+        return "/** @} */"
