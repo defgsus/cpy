@@ -608,7 +608,7 @@ class Renderer:
             dic[i[0]] = "NULL"
         dic.update({
             "tp_name": '"%s.%s"' % (self.context.module_name, cls.py_name),
-            "tp_basicsize": str(cls.struct_size),
+            "tp_basicsize": str(cls.struct_size) if cls.struct_size else "%s%s" % (cls.get_namespace_prefix(), cls.sizeof_var),
             "tp_dealloc": cls.class_dealloc_func_name,
             #"tp_getattro": "PyObject_GenericGetAttr",
             #"tp_setattro": "PyObject_GenericSetAttr",

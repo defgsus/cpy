@@ -8,7 +8,7 @@ class Namespaced:
         self.mangled = None
 
     def has_namespace(self):
-        return len(self.namespaces) > 1 or not self.namespaces == ["::"]
+        return len(self.namespaces) > 1 or (len(self.namespaces) == 1 and not self.namespaces == ["::"])
 
     def get_namespace_prefix(self):
         n = []
@@ -349,6 +349,7 @@ class Class(Namespaced):
         self.user_new_func = "new_%s" % self.c_name
         self.user_is_func = "is_%s" % self.c_name
         self.user_type_func = "type_%s" % self.c_name
+        self.sizeof_var = "sizeof_%s" % self.c_name
 
     def _update_methods(self):
         self.normal_methods = []

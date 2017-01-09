@@ -12,9 +12,7 @@ class XmlContext:
         self.id = None
         self.context_id = None
         self.context = None
-        self.file_id = None
-        self.line = 0
-        self.end_line = 0
+        self.location = ("", 0)
 
     def get_namespace_list(self):
         n = []
@@ -57,7 +55,8 @@ class XmlStruct(XmlContext):
         c.py_name = self.py_name
         c.py_doc = self.py_doc
         c.c_name = self.c_name
-        c.line = self.line
+        c.file = self.location[0]
+        c.line = self.location[1]
         c.struct_size = self.size
         c.namespaces = self.get_namespace_list()
         return c
@@ -93,8 +92,8 @@ class XmlFunction(XmlContext):
             f.is_property = pyname[1] == "get" or pyname[1] == "set"
             f.is_setter = pyname[1] == "set"
         f.py_doc = self.py_doc
-        f.line = self.line
-        f.end_line = self.end_line
+        f.file = self.location[0]
+        f.line = self.location[1]
         f.namespaces = self.get_namespace_list()
         f.c_return_type = self.return_type
         for arg in self.arguments:
@@ -393,10 +392,6 @@ class DoxygenParser:
         kind = root.attrib["kind"]
         if kind == "function":
             self._parse_function(root)
-        #print("sec %s" % root, root.attrib)
-        #for child in root:
-        #    print(child.attrib)
-        #    print(child.tag, child.text)
 
     def _get_text(self, node):
         txt = node.text
@@ -445,6 +440,12 @@ class DoxygenParser:
             self.error("Expected 'type' in %s" % node)
         return self._get_text(tnode).strip().replace(" ", "")
 
+    def _get_location(self, node):
+        lnode = node.find("location")
+        if lnode is None:
+            self.error("Location not found in %s" % node)
+        return lnode.get("file", ""), lnode.get("line", 0)
+
     def _parse_function(self, node):
         o = XmlFunction()
         o.c_name = node.find("name").text
@@ -452,6 +453,7 @@ class DoxygenParser:
         o.id = node.attrib["id"]
         o.return_type = self._get_type(node)
         o.py_name, o.py_doc = self._get_doc(node)
+        o.location = self._get_location(node)
         self.push_stack("parsing arguments")
         for i in node.iterfind("param"):
             o.arguments.append((self._get_type(i), i.find("declname").text))
@@ -466,13 +468,13 @@ class DoxygenParser:
             self.error("refid not found")
         self._parse_doxy_xml(os.path.join(self.xml_dir, "%s.xml" % refid))
 
-
     def _parse_struct(self, node):
         o = XmlStruct()
         o.id = node.attrib.get("id")
         o.c_name = node.find("compoundname").text
         self.push_stack("parsing struct %s" % o.c_name)
         o.py_name, o.py_doc = self._get_doc(node)
+        o.location = self._get_location(node)
         self.pop_stack()
         self.structs.setdefault(o.id, o)
 
