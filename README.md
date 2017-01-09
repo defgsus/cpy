@@ -161,10 +161,10 @@ PyObject* global_func() { Py_RETURN_NONE; }
 /** @p myclass.method */
 PyObject* myclass_method(PyObject* self) { Py_RETURN_NONE; }
 
-/** @p myclass.prop@get */
+/** @p myclass.prop-get */
 PyObject* myclass_prop_getter(PyObject* self, void*) { Py_RETURN_NONE; }
 
-/** @p myclass.prop@set */
+/** @p myclass.prop-set */
 int myclass_prop_setter(PyObject* self, PyObject* obj, void*) { return 0; }
 
 /** @} */    

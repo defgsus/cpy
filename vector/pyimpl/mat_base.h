@@ -30,7 +30,6 @@ extern "C" {
 
     MatrixBase* new_MatrixBase();
     bool is_MatrixBase(PyObject*);
-    size_t sizeof_MatrixBase();
 
     MatrixBase* createMatrix(int rows, int columns, double* data = NULL);
 
@@ -43,7 +42,6 @@ extern "C" {
 
     Matrix33* new_Matrix33();
     bool is_Matrix33(PyObject*);
-    size_t sizeof_Matrix33();
 
 
 } // extern "C"

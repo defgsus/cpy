@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     }
 
     // append module to inittab
-    initialize_module_module();
+    PYMOD::initialize_module_mod();
 
     // run python
     Py_Main(argc, wargs);

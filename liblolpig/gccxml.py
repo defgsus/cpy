@@ -164,7 +164,7 @@ class XmlFunction(XmlContext):
     def as_function(self):
         from .context import Function, Argument
         f = Function()
-        pyname = self.py_name.split("@")
+        pyname = self.py_name.split("-")
         f.c_name = self.c_name
         f.py_name = pyname[0]
         if len(pyname) > 1:

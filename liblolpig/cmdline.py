@@ -166,7 +166,7 @@ def process_commands(argv=None):
     #-export -i example/export/stuff.py -o example/export/pydef -n MO PYTHON
     #s = "-i vector/pyimpl -o vector/vec_module -n MOP -m vec"
     #s = "-i test_doxygen/code/vec_base.h -o test_doxygen/gen/vec_module -n MOP -m vec"
-    #s = "-i example/test.cpp -o example/test_module -m module"
+    #s = "-i example/test.cpp -o example/test_module -m mod -n PYMOD"
     #argv = ["lolpig.py", ] + s.split()
 
 

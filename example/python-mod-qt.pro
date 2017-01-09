@@ -24,3 +24,13 @@ SOURCES += \
     test_module.cpp \
     main.cpp
 
+python_modfiles = \
+    $$PWD/test.cpp
+
+pymod.target = test_module.h
+pymod.commands = /home/defgsus/prog/python/dev/lolpig/lolpig.py -i $$python_modfiles -o $$PWD/test_module -m mod -n PYMOD
+pymod.depends = $$python_modfiles
+
+QMAKE_EXTRA_TARGETS += pymod
+
+PRE_TARGETDEPS += test_module.h

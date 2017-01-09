@@ -10,188 +10,146 @@ namespace PYTHON {
 
 extern "C" {
 
-/** @ingroup lolpig
-    @p vec3
-    The vector class */
-struct Vector3 {
+/** @addtogroup lolpig
+    @{ */
+
+/** @p Base
+    Base class */
+struct Base {
     PyObject_HEAD
     double v[4];
     int len;
 };
-size_t sizeof_Vector3() { return sizeof(Vector3); }
+/** @} */
 
-Vector3* new_Vector3();
-bool is_Vector3(PyObject*);
+size_t sizeof_Base() { return sizeof(Base); }
+
+Base* new_Base();
+bool is_Base(PyObject*);
 
 /** @ingroup lolpig
-    @p vec4
-    The other vector class
+    @p Derived
+    Derived from Base
     */
-struct Vector4 : public Vector3 {
+struct Derived : public Base { };
 
-};
-size_t sizeof_Vector4() { return sizeof(Vector4); }
+size_t sizeof_Derived() { return sizeof(Derived); }
 
 /** @ingroup lolpig
-    @p _vec3_iter
-    vector iterator */
-struct Vector3Iter {
+    @p _base_iter
+    Base iterator */
+struct BaseIter {
     PyObject_HEAD
-    Vector3* vec;
+    Base* b;
     int iter;
 };
-size_t sizeof_Vector3Iter() { return sizeof(Vector3Iter); }
+size_t sizeof_BaseIter() { return sizeof(BaseIter); }
 
-Vector3Iter* new_Vector3Iter();
-bool is_Vector3Iter(PyObject*);
+BaseIter* new_BaseIter();
+bool is_BaseIter(PyObject*);
 
 
 /** @addtogroup lolpig
     @{ */
 
-/** @p vec3.__init__
-    the docstring
+/** @p Base.__init__
+    the docstring \n
     haste nich gesehn
-    >>> vec3(1,2,3)
-    vec3(1,2,3)
 */
-int vec3_init(PyObject* self, PyObject* args, PyObject* )
+int base_init(PyObject* self, PyObject* args, PyObject* )
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Base* vec = reinterpret_cast<Base*>(self);
     if (!PyArg_ParseTuple(args, "ddd", &vec->v[0], &vec->v[1], &vec->v[2]))
         return -1;
     vec->len = 3;
 	return 0;
 }
 
-/** @p vec4.__init__
+/** @p Derived.__init__
     the docstring
     haste nich gesehn
-    >>> vec4(1,2,3)
-    vec4(1,2,3)
 */
-int vec4_init(PyObject* self, PyObject* args, PyObject* )
+int derived_init(PyObject* self, PyObject* args, PyObject* )
 {
-    Vector4* vec = reinterpret_cast<Vector4*>(self);
+    Derived* vec = reinterpret_cast<Derived*>(self);
     if (!PyArg_ParseTuple(args, "dddd", &vec->v[0], &vec->v[1], &vec->v[2], &vec->v[3]))
         return -1;
     vec->len = 4;
     return 0;
 }
 
-/** @p vec3.copy
+/** @p Base.copy
     Makes a copy
     */
-PyObject* vec3_copy(PyObject* self)
+PyObject* base_copy(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    Vector3* nvec = new_Vector3();
-    for (int i=0; i<3; ++i)
+    Base* vec = reinterpret_cast<Base*>(self);
+    Base* nvec = new_Base();
+    nvec->len = vec->len;
+    for (int i=0; i<vec->len; ++i)
         nvec->v[i] = vec->v[i];
     return reinterpret_cast<PyObject*>(nvec);
 }
 
-/** @p vec3.__repr__ */
-PyObject* vec3_repr(PyObject* self)
+/** @p Base.__repr__ */
+PyObject* base_repr(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Base* vec = reinterpret_cast<Base*>(self);
     std::stringstream s;
-    s << "vec3(" << vec->v[0] << ", " << vec->v[1] << ", " << vec->v[2] << ")";
+    s << "Base(" << vec->v[0] << ", " << vec->v[1] << ", " << vec->v[2] << ")";
     return PyUnicode_FromString(s.str().c_str());
 }
 
-/** @p vec3.__call__ */
-PyObject* vec3_call(PyObject* self, PyObject*, PyObject*)
+/** @p Derived.__repr__ */
+PyObject* derived_repr(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    PRINT("Called! " << vec->v[0] << ", " << vec->v[1] << ", " << vec->v[2]);
-    Py_RETURN_NONE;
-}
-
-/** @p vec3.__round__ */
-PyObject* vec3_round(PyObject* self)
-{
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    Vector3* nvec = new_Vector3();
-    for (int i=0; i<3; ++i)
-        nvec->v[i] = std::floor(vec->v[i]);
-    return reinterpret_cast<PyObject*>(nvec);
-}
-
-/** @p vec3.__iconcat__ */
-PyObject* vec3_iconcat(PyObject* self, PyObject* other)
-{
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    PRINT("iconcat");
-    Py_INCREF(vec);
-    return (PyObject*)vec;
-}
-
-/** @p vec3.__concat__ */
-PyObject* vec3_concat(PyObject* self, PyObject* other)
-{
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    PRINT("concat");
-    Py_INCREF(vec);
-    return (PyObject*)vec;
-}
-
-/** @p vec3.__mul__ */
-PyObject* vec3_mul(PyObject* self, PyObject* arg)
-{
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    if (!PyFloat_Check(arg))
-    {
-        PyErr_SetString(PyExc_TypeError, "expected float");
-        return NULL;
-    }
-    double a = PyFloat_AsDouble(arg);
-    Vector3* nvec = new_Vector3();
-    for (int i=0; i<3; ++i)
-        nvec->v[i] = vec->v[i] * a;
-    return reinterpret_cast<PyObject*>(nvec);
+    Base* vec = reinterpret_cast<Base*>(self);
+    std::stringstream s;
+    s << "Derived(" << vec->v[0] << ", " << vec->v[1] << ", " << vec->v[2]
+      << ", " << vec->v[3] << ")";
+    return PyUnicode_FromString(s.str().c_str());
 }
 
 
-/** @p vec3.__getitem__ */
-PyObject* vec3_getitem(PyObject* self, Py_ssize_t idx)
+/** @p Base.__getitem__ */
+PyObject* base_getitem(PyObject* self, Py_ssize_t idx)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Base* vec = reinterpret_cast<Base*>(self);
     return PyFloat_FromDouble(vec->v[idx]);
 }
 
-/** @p vec3.__setitem__ */
-int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
+/** @p Base.__setitem__ */
+int base_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Base* vec = reinterpret_cast<Base*>(self);
     vec->v[idx] = PyFloat_AsDouble(val);
     return 0;
 }
 
-/** @p vec3.__iter__ */
+/** @p Base.__iter__ */
 PyObject* vec3_iter(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    Vector3Iter* iter = new_Vector3Iter();
+    Base* vec = reinterpret_cast<Base*>(self);
+    BaseIter* iter = new_BaseIter();
     iter->iter = 0;
-    iter->vec = vec;
+    iter->b = vec;
     return reinterpret_cast<PyObject*>(iter);
 }
 
-/** @p _vec3_iter.__iter__ */
-PyObject* vec3iter_iter(PyObject* self)
+/** @p _base_iter.__iter__ */
+PyObject* baseiter_iter(PyObject* self)
 {
-    Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
+    BaseIter* iter = reinterpret_cast<BaseIter*>(self);
     Py_INCREF(iter);
     return reinterpret_cast<PyObject*>(iter);
 }
 
-/** @p _vec3_iter.__next__ */
-PyObject* vec3iter_next(PyObject* self)
+/** @p _base_iter.__next__ */
+PyObject* baseiter_next(PyObject* self)
 {
-    Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
-    PyObject* ret = PyFloat_FromDouble(iter->vec->v[iter->iter]);
-    if (iter->iter++ >= iter->vec->len)
+    BaseIter* iter = reinterpret_cast<BaseIter*>(self);
+    PyObject* ret = PyFloat_FromDouble(iter->b->v[iter->iter]);
+    if (iter->iter++ >= iter->b->len)
     {
         PyErr_SetObject(PyExc_StopIteration, NULL);
         return NULL;
@@ -200,8 +158,8 @@ PyObject* vec3iter_next(PyObject* self)
 }
 
 
-/** @p vec3.__contains__ */
-int vec3_contains(PyObject* self, PyObject* val)
+/** @p Base.__contains__ */
+int base_contains(PyObject* self, PyObject* val)
 {
     if (!PyFloat_Check(val))
     {
@@ -209,33 +167,38 @@ int vec3_contains(PyObject* self, PyObject* val)
         return -1;
     }
     double a = PyFloat_AsDouble(val);
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
-    for (int i=0; i<3; ++i)
+    Base* vec = reinterpret_cast<Base*>(self);
+    for (int i=0; i<vec->len; ++i)
         if (vec->v[i] == a)
             return 1;
     return 0;
 }
 
-/** @p vec3.__len__ */
-Py_ssize_t vec3_len(PyObject* self)
+/** @p Base.__len__ */
+Py_ssize_t base_len(PyObject* self)
 {
-    Vector3* vec = reinterpret_cast<Vector3*>(self);
+    Base* vec = reinterpret_cast<Base*>(self);
     return vec->len;
 }
 
-/** @p func23
-    Returns 23. */
-PyObject* func23() { return PyFloat_FromDouble(23.); }
-
-/** @p add
-    Some comment, with comma */
-PyObject* add_func(PyObject* args)
+/** @p Base.stuff-get */
+PyObject* base_stuff_get(PyObject* , void*)
 {
-    double a, b;
-    if (!PyArg_ParseTuple(args, "dd", &a, &b))
-        return NULL;
-    return PyFloat_FromDouble(a + b);
+    return PyUnicode_FromString("stuff");
 }
+
+/** @p Base.name-get */
+PyObject* base_name_get(PyObject* , void*)
+{
+    return PyUnicode_FromString("base");
+}
+
+/** @p Derived.name-get */
+PyObject* derived_name_get(PyObject* , void*)
+{
+    return PyUnicode_FromString("derived");
+}
+
 
 /** @} */
 

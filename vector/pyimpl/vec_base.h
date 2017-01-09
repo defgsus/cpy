@@ -97,7 +97,6 @@ extern "C" {
 
     VectorBase* new_VectorBase();
     bool is_VectorBase(PyObject*);
-    size_t sizeof_VectorBase();
 
 
     /** @ingroup lolpig
@@ -107,8 +106,6 @@ extern "C" {
 
     Vector3* new_Vector3();
     bool is_Vector3(PyObject*);
-    size_t sizeof_Vector3();
-
 
 
     /** @ingroup lolpig
@@ -126,7 +123,6 @@ extern "C" {
 
     VectorIter* new_VectorIter();
     bool is_VectorIter(PyObject*);
-    size_t sizeof_VectorIter();
 
 } // extern "C"
 	

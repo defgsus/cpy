@@ -71,7 +71,7 @@ class XmlFunction(XmlContext):
     def as_function(self):
         from .context import Function, Argument
         f = Function()
-        pyname = self.py_name.split("@")
+        pyname = self.py_name.split("-")
         f.id = self.id
         f.c_name = self.get_c_name()
         f.py_name = pyname[0]

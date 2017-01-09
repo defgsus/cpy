@@ -321,7 +321,7 @@ class Class(Namespaced):
             if f.is_property:
                 tup = None
                 for i in p:
-                    if i[0].py_name == f.py_name or i[1].py_name == f.py_name:
+                    if (i[0] and i[0].py_name == f.py_name) or (i[1] and i[1].py_name == f.py_name):
                         tup = i
                         break
                 if not tup:
