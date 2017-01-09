@@ -67,17 +67,13 @@ Defining a class and a more complete example looks like this:
 
 extern "C" {
 
-/** @addtogroup lolpig 
-    @{ */
-
-/** @p vec3
+/** @ingroup lolpig
+    @p vec3
     A vector class */
 struct Vector3 {
     PyObject_HEAD
     double v[3];
 };
-
-/** @} */
 
 // This must be implemented so that the C-API module knows about the size
 // of your struct. 
@@ -87,8 +83,10 @@ size_t sizeof_Vector3() { return sizeof(Vector3); }
 Vector3* new_Vector3();
 bool is_Vector3(PyObject*);
 
-/** @ingroup lolpig
-    @p vec3.__init__
+/** @addtogroup lolpig 
+    @{ */
+
+/** @p vec3.__init__
     Initialize the vector */
 int vec3_init(PyObject* self, PyObject* args, PyObject* kwargs)
 {
@@ -96,8 +94,7 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* kwargs)
 	return 0;
 }
 
-/** @ingroup lolpig
-    @p vec3.copy
+/** @p vec3.copy
     Makes a copy of the vector */
 PyObject* vec3_copy(PyObject* self)
 {
@@ -108,8 +105,7 @@ PyObject* vec3_copy(PyObject* self)
     return reinterpret_cast<PyObject*>(nvec);
 }
 
-/** @ingroup lolpig
-    @p vec3.__getitem__
+/** @p vec3.__getitem__
     Returns a component */
 PyObject* vec3_getitem(PyObject* self, Py_ssize_t idx)
 {
@@ -117,8 +113,7 @@ PyObject* vec3_getitem(PyObject* self, Py_ssize_t idx)
     return PyFloat_FromDouble(vec->v[idx]);
 }
 
-/** @ingroup lolpig
-    @p vec3.__setitem__
+/** @p vec3.__setitem__
     Sets a component */
 int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
@@ -126,6 +121,8 @@ int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
     vec->v[idx] = PyFloat_AsDouble(val);
     return 0;
 }
+
+/** @} */
 
 } // extern "C"
 ```
@@ -137,7 +134,7 @@ Running *lolpig* on the above .cpp file creates a .h and .cpp file defining
 the c-api python module. All three files (your own and the two created ones)
 need to be compiled and that's just it :)
 
-*lolpig* verifies function signatures of known functions, e.g. **__getitem__**. 
+*lolpig* verifies function signatures of known functions, e.g. `__getitem__`. 
 There are some peculiarities in the Python/C API. On deviations, *lolpig* will 
 stop compiling and print the expected function signature instead.
 
@@ -169,3 +166,41 @@ int myclass_prop_setter(PyObject* self, PyObject* obj, void*) { return 0; }
 
 /** @} */    
 ```
+
+You have *some* control over the expected function signatures, for example
+```c++
+/** @p global_func */
+PyObject* global_func(PyObject* args)
+```
+will result in the `METH_VARARGS` flag set in the `PyMethodDef` table. 
+That means that `args` will be an argument tuple.
+
+Instead
+```c++
+/** @p global_func */
+PyObject* global_func(PyObject* obj)
+```
+will result in `METH_O` which means that `obj` will be the actual object. 
+Calling `global_func(1, 2)` in Python would result in an error.
+
+```c++
+/** @p global_func */
+PyObject* global_func(PyObject* args, PyObject* kwargs)
+```
+will result in `METH_VARARGS | METH_KEYWORDS`. The name of the C function 
+parameters does not matter in that case. Every non-class function with two PyObject*
+arguments will have the same result. The same goes for class methods:
+```c++
+/** @p myclass.single_object_func */
+PyObject* func1(PyObject* self, PyObject* obj) { ... }
+
+/** @p myclass.argument_tuple_func */
+PyObject* func2(PyObject* self, PyObject* args) { ... }
+
+/** @p myclass.argument_tuple_func_as_well */
+PyObject* func3(PyObject* self, PyObject* ) { ... }
+
+/** @p myclass.kwargs_func */
+PyObject* func4(PyObject* self, PyObject* args, PyObject* kwargs) { ... }
+```
+

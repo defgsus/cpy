@@ -897,3 +897,8 @@ class Renderer:
         else:
             self.comment_struct = ""
         return code
+
+    #def _render_annotation(self, py_name, py_doc):
+    #    LOLPIG_DEF(%(py_name)s, (
+    #            %(py_doc)s
+    #            ))
