@@ -3,8 +3,6 @@
 #include <sstream>
 #include <cmath>
 
-#define LOLPIG_DEF(name, doc)
-
 #define PRINT(arg__) std::cout << arg__ << std::endl;
 
 namespace MO {
@@ -12,38 +10,51 @@ namespace PYTHON {
 
 extern "C" {
 
-LOLPIG_DEF(vec3, The vector class)
+/** @ingroup lolpig
+    @p vec3
+    The vector class */
 struct Vector3 {
     PyObject_HEAD
     double v[4];
     int len;
 };
+size_t sizeof_Vector3() { return sizeof(Vector3); }
 
 Vector3* new_Vector3();
 bool is_Vector3(PyObject*);
 
-LOLPIG_DEF(vec4, The other vector class)
+/** @ingroup lolpig
+    @p vec4
+    The other vector class
+    */
 struct Vector4 : public Vector3 {
 
 };
+size_t sizeof_Vector4() { return sizeof(Vector4); }
 
-LOLPIG_DEF(_vec3_iter, vector iterator)
+/** @ingroup lolpig
+    @p _vec3_iter
+    vector iterator */
 struct Vector3Iter {
     PyObject_HEAD
     Vector3* vec;
     int iter;
 };
+size_t sizeof_Vector3Iter() { return sizeof(Vector3Iter); }
 
 Vector3Iter* new_Vector3Iter();
 bool is_Vector3Iter(PyObject*);
 
 
-LOLPIG_DEF( vec3.__init__,
+/** @addtogroup lolpig
+    @{ */
+
+/** @p vec3.__init__
     the docstring
     haste nich gesehn
     >>> vec3(1,2,3)
     vec3(1,2,3)
-)
+*/
 int vec3_init(PyObject* self, PyObject* args, PyObject* )
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -53,12 +64,12 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* )
 	return 0;
 }
 
-LOLPIG_DEF( vec4.__init__,
+/** @p vec4.__init__
     the docstring
     haste nich gesehn
     >>> vec4(1,2,3)
     vec4(1,2,3)
-)
+*/
 int vec4_init(PyObject* self, PyObject* args, PyObject* )
 {
     Vector4* vec = reinterpret_cast<Vector4*>(self);
@@ -68,7 +79,9 @@ int vec4_init(PyObject* self, PyObject* args, PyObject* )
     return 0;
 }
 
-LOLPIG_DEF( vec3.copy, Makes a copy)
+/** @p vec3.copy
+    Makes a copy
+    */
 PyObject* vec3_copy(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -78,7 +91,7 @@ PyObject* vec3_copy(PyObject* self)
     return reinterpret_cast<PyObject*>(nvec);
 }
 
-LOLPIG_DEF( vec3.__repr__, )
+/** @p vec3.__repr__ */
 PyObject* vec3_repr(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -87,7 +100,7 @@ PyObject* vec3_repr(PyObject* self)
     return PyUnicode_FromString(s.str().c_str());
 }
 
-LOLPIG_DEF( vec3.__call__, )
+/** @p vec3.__call__ */
 PyObject* vec3_call(PyObject* self, PyObject*, PyObject*)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -95,7 +108,7 @@ PyObject* vec3_call(PyObject* self, PyObject*, PyObject*)
     Py_RETURN_NONE;
 }
 
-LOLPIG_DEF( vec3.__round__, )
+/** @p vec3.__round__ */
 PyObject* vec3_round(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -105,7 +118,7 @@ PyObject* vec3_round(PyObject* self)
     return reinterpret_cast<PyObject*>(nvec);
 }
 
-LOLPIG_DEF( vec3.__iconcat__, )
+/** @p vec3.__iconcat__ */
 PyObject* vec3_iconcat(PyObject* self, PyObject* other)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -114,7 +127,7 @@ PyObject* vec3_iconcat(PyObject* self, PyObject* other)
     return (PyObject*)vec;
 }
 
-LOLPIG_DEF( vec3.__concat__, )
+/** @p vec3.__concat__ */
 PyObject* vec3_concat(PyObject* self, PyObject* other)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -123,7 +136,7 @@ PyObject* vec3_concat(PyObject* self, PyObject* other)
     return (PyObject*)vec;
 }
 
-LOLPIG_DEF( vec3.__mul__, )
+/** @p vec3.__mul__ */
 PyObject* vec3_mul(PyObject* self, PyObject* arg)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -140,14 +153,14 @@ PyObject* vec3_mul(PyObject* self, PyObject* arg)
 }
 
 
-LOLPIG_DEF( vec3.__getitem__, )
+/** @p vec3.__getitem__ */
 PyObject* vec3_getitem(PyObject* self, Py_ssize_t idx)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
     return PyFloat_FromDouble(vec->v[idx]);
 }
 
-LOLPIG_DEF( vec3.__setitem__, )
+/** @p vec3.__setitem__ */
 int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -155,7 +168,7 @@ int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
     return 0;
 }
 
-LOLPIG_DEF( vec3.__iter__, )
+/** @p vec3.__iter__ */
 PyObject* vec3_iter(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -165,7 +178,7 @@ PyObject* vec3_iter(PyObject* self)
     return reinterpret_cast<PyObject*>(iter);
 }
 
-LOLPIG_DEF( _vec3_iter.__iter__, )
+/** @p _vec3_iter.__iter__ */
 PyObject* vec3iter_iter(PyObject* self)
 {
     Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
@@ -173,7 +186,7 @@ PyObject* vec3iter_iter(PyObject* self)
     return reinterpret_cast<PyObject*>(iter);
 }
 
-LOLPIG_DEF( _vec3_iter.__next__, )
+/** @p _vec3_iter.__next__ */
 PyObject* vec3iter_next(PyObject* self)
 {
     Vector3Iter* iter = reinterpret_cast<Vector3Iter*>(self);
@@ -187,7 +200,7 @@ PyObject* vec3iter_next(PyObject* self)
 }
 
 
-LOLPIG_DEF( vec3.__contains__, )
+/** @p vec3.__contains__ */
 int vec3_contains(PyObject* self, PyObject* val)
 {
     if (!PyFloat_Check(val))
@@ -203,19 +216,19 @@ int vec3_contains(PyObject* self, PyObject* val)
     return 0;
 }
 
-LOLPIG_DEF( vec3.__len__, )
-Py_ssize_t vec3_len(PyObject* )
+/** @p vec3.__len__ */
+Py_ssize_t vec3_len(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
     return vec->len;
 }
 
-PyObject* helper_func(PyObject* arg) { return arg; }
-
-LOLPIG_DEF(func23, Returns 23.)
+/** @p func23
+    Returns 23. */
 PyObject* func23() { return PyFloat_FromDouble(23.); }
 
-LOLPIG_DEF(add,( Some comment, with comma ))
+/** @p add
+    Some comment, with comma */
 PyObject* add_func(PyObject* args)
 {
     double a, b;
@@ -223,6 +236,8 @@ PyObject* add_func(PyObject* args)
         return NULL;
     return PyFloat_FromDouble(a + b);
 }
+
+/** @} */
 
 } // extern "C"
 	

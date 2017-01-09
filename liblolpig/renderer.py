@@ -434,10 +434,12 @@ class Renderer:
                 code += self._render_namespace_open(i[0].namespaces)
                 for j in i:
                     code += INDENT + "struct %s;\n" % j.class_struct_name
+                    code += INDENT + "size_t %s();\n" % j.sizeof_func
                 code += self._render_namespace_close(i[0].namespaces)
             else:
                 for j in i:
                     code += "struct %s;\n" % j.class_struct_name
+                    code += "size_t %s();\n" % j.sizeof_func
         if code:
             code = "/* class struct forwards */\n" + code
         return code
@@ -608,7 +610,7 @@ class Renderer:
             dic[i[0]] = "NULL"
         dic.update({
             "tp_name": '"%s.%s"' % (self.context.module_name, cls.py_name),
-            "tp_basicsize": str(cls.struct_size) if cls.struct_size else "%s%s" % (cls.get_namespace_prefix(), cls.sizeof_var),
+            "tp_basicsize": str(cls.struct_size) if cls.struct_size else "%s%s()" % (cls.get_namespace_prefix(), cls.sizeof_func),
             "tp_dealloc": cls.class_dealloc_func_name,
             #"tp_getattro": "PyObject_GenericGetAttr",
             #"tp_setattro": "PyObject_GenericSetAttr",

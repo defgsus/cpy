@@ -349,7 +349,7 @@ class Class(Namespaced):
         self.user_new_func = "new_%s" % self.c_name
         self.user_is_func = "is_%s" % self.c_name
         self.user_type_func = "type_%s" % self.c_name
-        self.sizeof_var = "sizeof_%s" % self.c_name
+        self.sizeof_func = "sizeof_%s" % self.c_name
 
     def _update_methods(self):
         self.normal_methods = []

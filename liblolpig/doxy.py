@@ -10,29 +10,14 @@ class ParseError(BaseException):
 class XmlContext:
     def __init__(self):
         self.id = None
-        self.context_id = None
-        self.context = None
         self.location = ("", 0)
+        self.c_name = ""
+
+    def get_c_name(self):
+        return self.c_name.split("::")[-1]
 
     def get_namespace_list(self):
-        n = []
-        if self.context:
-            if hasattr(self.context, "c_name"):
-                n.append(self.context.c_name)
-            n = self.context.get_namespace_list() + n
-        return n
-
-
-class XmlNamespace(XmlContext):
-    def __init__(self):
-        super().__init__()
-        self.c_name = None
-
-    def __str__(self):
-        return "XmlNamespace(%s)" % self.c_name
-
-    def __repr__(self):
-        return self.__str__()
+        return self.c_name.split("::")[:-1]
 
 
 class XmlStruct(XmlContext):
@@ -54,7 +39,7 @@ class XmlStruct(XmlContext):
         c = Class()
         c.py_name = self.py_name
         c.py_doc = self.py_doc
-        c.c_name = self.c_name
+        c.c_name = self.get_c_name()
         c.file = self.location[0]
         c.line = self.location[1]
         c.struct_size = self.size
@@ -86,7 +71,7 @@ class XmlFunction(XmlContext):
         from .context import Function, Argument
         f = Function()
         pyname = self.py_name.split("@")
-        f.c_name = self.c_name
+        f.c_name = self.get_c_name()
         f.py_name = pyname[0]
         if len(pyname) > 1:
             f.is_property = pyname[1] == "get" or pyname[1] == "set"
@@ -360,6 +345,9 @@ class DoxygenParser:
                                 self._parse_doxy_xml(os.path.join(root, f))
             except IOError as e:
                 self.error(str(e))
+            #except BaseException as e:
+            #    self.error(e.__class__.__name__ + ":" + str(e))
+
             self.pop_stack()
 
             self.filenames = filenames
@@ -456,7 +444,8 @@ class DoxygenParser:
         o.location = self._get_location(node)
         self.push_stack("parsing arguments")
         for i in node.iterfind("param"):
-            o.arguments.append((self._get_type(i), i.find("declname").text))
+            nnode = i.find("declname")
+            o.arguments.append((self._get_type(i), nnode.text if nnode is not None else ""))
         self.pop_stack()
         self.pop_stack()
         self.functions.setdefault(o.id, o)
