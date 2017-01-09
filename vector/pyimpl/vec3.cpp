@@ -8,8 +8,10 @@ namespace PYTHON {
 
 extern "C" {
 
-LOLPIG_DEF( vec3.__new__, )
-PyObject* vec3_new(struct _typeobject* type, PyObject* args, PyObject* )
+/** @ingroup lolpig
+    @p vec3.__new__
+*/
+PyObject* vec3_new(_typeobject* type, PyObject* args, PyObject* )
 {
     Vector3* vec = PyObject_NEW(Vector3, type);
     vec->alloc(3);
@@ -22,8 +24,10 @@ PyObject* vec3_new(struct _typeobject* type, PyObject* args, PyObject* )
     return pyobject_cast<PyObject*>(vec);
 }
 
-/*
-LOLPIG_DEF( vec3.__init__, )
+#if 0
+/** @ingroup lolpig
+    @p vec3.__init__
+*/
 int vec3_init(PyObject* self, PyObject* args, PyObject* )
 {
     Vector3* vec = pyobject_cast<Vector3*>(self);
@@ -31,17 +35,21 @@ int vec3_init(PyObject* self, PyObject* args, PyObject* )
         return -1;
     vec->len = 3;
     return 0;
-}*/
+}
+#endif
 
-
-LOLPIG_DEF( vec3.__repr__, )
+/** @ingroup lolpig
+    @p vec3.__repr__
+*/
 PyObject* vec3_repr(PyObject* self)
 {
     Vector3* vec = pyobject_cast<Vector3*>(self);
     return toPython(vec->toRepr("vec3"));
 }
 
-LOLPIG_DEF( vec3.__str__, )
+/** @ingroup lolpig
+    @p vec3.__str__
+*/
 PyObject* vec3_str(PyObject* self)
 {
     Vector3* vec = pyobject_cast<Vector3*>(self);
@@ -51,12 +59,13 @@ PyObject* vec3_str(PyObject* self)
 
 // -------------- inplace funcs ----------------------------
 
-LOLPIG_DEF( vec3.cross, (
-        cross(seq3) -> self
-        Calculates the cross-product of this vector and seq3, INPLACE
-        The cross product is always perpendicular to the plane
-        on which the two vectors lie.
-        ))
+/** @ingroup lolpig
+    @p vec3.cross
+    cross(seq3) -> self \n
+    Calculates the cross-product of this vector and seq3, INPLACE \n
+    The cross product is always perpendicular to the plane \n
+    on which the two vectors lie. \n
+*/
 PyObject* vec3_cross(PyObject* self, PyObject* obj)
 {
     double v[3];
@@ -70,12 +79,13 @@ PyObject* vec3_cross(PyObject* self, PyObject* obj)
 
 // ---------------- copying funcs --------------------------
 
-LOLPIG_DEF( vec3.crossed, (
-        crossed(seq3) -> vec3
-        Returns the cross-product of this vector and seq3
-        The cross product is always perpendicular to the plane
-        on which the two vectors lie.
-        ))
+/** @ingroup lolpig
+    @p vec3.crossed
+    crossed(seq3) -> vec3 \n
+    Returns the cross-product of this vector and seq3 \n
+    The cross product is always perpendicular to the plane \n
+    on which the two vectors lie. \n
+*/
 PyObject* vec3_crossed(PyObject* self, PyObject* obj)
 {
     double v[3];
@@ -92,12 +102,13 @@ PyObject* vec3_crossed(PyObject* self, PyObject* obj)
 
 // -------------- transformation copy ----------------------
 
-LOLPIG_DEF(vec3.rotate_x, (
-        rotate_x(degree) -> self
-        Rotates the vector, INPLACE
-        >>> vec3(1,2,3).rotate_x(90).rounded()
-        vec3(1, -3, 2)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotate_x
+    rotate_x(degree) -> self \n
+    Rotates the vector, INPLACE \n
+    >>> vec3(1,2,3).rotate_x(90).rounded() \n
+    vec3(1, -3, 2) \n
+*/
 PyObject* vec3_rotate_x(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -108,12 +119,13 @@ PyObject* vec3_rotate_x(PyObject* self, PyObject *obj)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF(vec3.rotate_y, (
-        rotate_y(degree) -> self
-        Rotates the vector, INPLACE
-        >>> vec3((1,2,3)).rotate_y(90).round()
-        vec3(3, 2, -1)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotate_y
+    rotate_y(degree) -> self \n
+    Rotates the vector, INPLACE \n
+    >>> vec3((1,2,3)).rotate_y(90).round() \n
+    vec3(3, 2, -1)
+*/
 PyObject* vec3_rotate_y(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -124,12 +136,13 @@ PyObject* vec3_rotate_y(PyObject* self, PyObject *obj)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF(vec3.rotate_z, (
-        rotate_z(degree) -> self
-        Rotates the vector, INPLACE
-        >>> vec3((1,2,3)).rotate_z(90).round()
-        vec3(-2, 1, 3)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotate_z
+    rotate_z(degree) -> self \n
+    Rotates the vector, INPLACE \n
+    >>> vec3((1,2,3)).rotate_z(90).round() \n
+    vec3(-2, 1, 3) \n
+*/
 PyObject* vec3_rotate_z(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -140,13 +153,14 @@ PyObject* vec3_rotate_z(PyObject* self, PyObject *obj)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF(vec3.rotate_axis, (
-        rotate_axis(vec3, degree) -> self
-        Rotates the vector around an axis, INPLACE
-        Axis must be normalized!
-        >>> vec3(1,2,3).rotate_axis((1,0,0), 90) == vec3(1,2,3).rotate_x(90)
-        True
-        ))
+/** @ingroup lolpig
+    @p vec3.rotate_axis
+    rotate_axis(vec3, degree) -> self \n
+    Rotates the vector around an axis, INPLACE \n
+    Axis must be normalized! \n
+    >>> vec3(1,2,3).rotate_axis((1,0,0), 90) == vec3(1,2,3).rotate_x(90) \n
+    True
+*/
 PyObject* vec3_rotate_axis(PyObject* self, PyObject *args)
 {
     if (!PyTuple_Check(args) || PyTuple_Size(args) != 2)
@@ -171,12 +185,13 @@ PyObject* vec3_rotate_axis(PyObject* self, PyObject *args)
 
 // -------------- transformation copy ----------------------
 
-LOLPIG_DEF(vec3.rotated_x, (
-        rotated_x(degree) -> vec3
-        Returns a rotated vector
-        >>> vec3(1,2,3).rotated_x(90).rounded()
-        vec3(1, -3, 2)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotated_x
+    rotated_x(degree) -> vec3 \n
+    Returns a rotated vector \n
+    >>> vec3(1,2,3).rotated_x(90).rounded() \n
+    vec3(1, -3, 2) \n
+*/
 PyObject* vec3_rotated_x(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -188,12 +203,13 @@ PyObject* vec3_rotated_x(PyObject* self, PyObject *obj)
     return pyobject_cast<PyObject*>(ret);
 }
 
-LOLPIG_DEF(vec3.rotated_y, (
-        rotated_y(degree) -> vec3
-        Returns a rotated vector
-        >>> vec3((1,2,3)).rotated_y(90).rounded()
-        vec3(3, 2, -1)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotated_y
+    rotated_y(degree) -> vec3 \n
+    Returns a rotated vector \n
+    >>> vec3((1,2,3)).rotated_y(90).rounded() \n
+    vec3(3, 2, -1) \n
+*/
 PyObject* vec3_rotated_y(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -205,12 +221,13 @@ PyObject* vec3_rotated_y(PyObject* self, PyObject *obj)
     return pyobject_cast<PyObject*>(ret);
 }
 
-LOLPIG_DEF(vec3.rotated_z, (
-        rotated_z(degree) -> vec3
-        Returns a rotated vector
-        >>> vec3((1,2,3)).rotated_z(90).rounded()
-        vec3(-2, 1, 3)
-        ))
+/** @ingroup lolpig
+    @p vec3.rotated_z
+    rotated_z(degree) -> vec3 \n
+    Returns a rotated vector \n
+    >>> vec3((1,2,3)).rotated_z(90).rounded() \n
+    vec3(-2, 1, 3) \n
+*/
 PyObject* vec3_rotated_z(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -222,13 +239,14 @@ PyObject* vec3_rotated_z(PyObject* self, PyObject *obj)
     return pyobject_cast<PyObject*>(ret);
 }
 
-LOLPIG_DEF(vec3.rotated_axis, (
-        rotated_axis(vec3, degree) -> vec3
-        Returns a vector rotated around an axis.
-        Axis must be normalized!
-        >>> vec3(1,2,3).rotated_axis((1,0,0), 90) == vec3(1,2,3).rotated_x(90)
-        True
-        ))
+/** @ingroup lolpig
+    @p vec3.rotated_axis
+    rotated_axis(vec3, degree) -> vec3 \n
+    Returns a vector rotated around an axis. \n
+    Axis must be normalized! \n
+    >>> vec3(1,2,3).rotated_axis((1,0,0), 90) == vec3(1,2,3).rotated_x(90) \n
+    True
+*/
 PyObject* vec3_rotated_axis(PyObject* self, PyObject *args)
 {
     if (!PyTuple_Check(args) || PyTuple_Size(args) != 2)

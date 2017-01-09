@@ -10,8 +10,13 @@ namespace PYTHON {
 
 extern "C" {
 
-LOLPIG_DEF( mat.__new__, )
-PyObject* mat_new(struct _typeobject* type, PyObject* args, PyObject* kwargs)
+size_t sizeof_MatrixBase() { return sizeof(MatrixBase); }
+size_t sizeof_Matrix33() { return sizeof(Matrix33); }
+
+/** @ingroup lolpig
+    @p mat.__new__
+*/
+PyObject* mat_new(_typeobject* type, PyObject* args, PyObject* kwargs)
 {
     int r, c;
     if (!MatrixBase::getSizeFromArgs(args, kwargs, &r, &c))
@@ -31,21 +36,28 @@ PyObject* mat_new(struct _typeobject* type, PyObject* args, PyObject* kwargs)
 }
 
 
-LOLPIG_DEF( mat.__repr__, )
+/** @ingroup lolpig
+    @p mat.__repr__
+*/
 PyObject* mat_repr(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(vec->toRepr("mat", vec->num_rows));
 }
 
-LOLPIG_DEF( mat.__str__, )
+/** @ingroup lolpig
+    @p mat.__str__
+*/
 PyObject* mat_str(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(vec->toString("mat", vec->num_rows));
 }
 
-LOLPIG_DEF( mat.string, Returns a multi-line string representation)
+/** @ingroup lolpig
+    @p mat.string
+    Returns a multi-line string representation
+*/
 PyObject* mat_string(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -53,20 +65,22 @@ PyObject* mat_string(PyObject* self)
 }
 
 
-LOLPIG_DEF( mat.num_rows, (
-    num_rows() -> int
-    Returns number of rows
-    ))
+/** @ingroup lolpig
+    @p mat.num_rows
+    num_rows() -> int \n
+    Returns number of rows \n
+*/
 PyObject* mat_num_rows(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython((long)vec->num_rows);
 }
 
-LOLPIG_DEF( mat.num_columns, (
-    num_columns() -> int
-    Returns number of columns
-    ))
+/** @ingroup lolpig
+    @p mat.num_columns
+    num_columns() -> int \n
+    Returns number of columns \n
+*/
 PyObject* mat_num_columns(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -74,20 +88,22 @@ PyObject* mat_num_columns(PyObject* self)
 }
 
 
-LOLPIG_DEF( mat.trace, (
-    trace() -> float
-    Returns the sum of the diagonal
-    ))
+/** @ingroup lolpig
+    @p mat.trace
+    trace() -> float \n
+    Returns the sum of the diagonal \n
+*/
 PyObject* mat_trace(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
     return toPython(VEC::mat_trace(vec->v, vec->num_rows, vec->num_cols));
 }
 
-LOLPIG_DEF( mat.column, (
-    column(int) -> vec
-    Returns the specified column as vector
-    ))
+/** @ingroup lolpig
+    @p mat.column
+    column(int) -> vec \n
+    Returns the specified column as vector \n
+*/
 PyObject* mat_column(PyObject* self, PyObject* obj)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -100,10 +116,11 @@ PyObject* mat_column(PyObject* self, PyObject* obj)
                 createVector(vec->num_rows, &vec->v[idx*vec->num_rows]) );
 }
 
-LOLPIG_DEF( mat.row, (
-    row(int) -> vec
-    Returns the specified row as vector
-    ))
+/** @ingroup lolpig
+    @p mat.row
+    row(int) -> vec \n
+    Returns the specified row as vector \n
+*/
 PyObject* mat_row(PyObject* self, PyObject* obj)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -117,10 +134,11 @@ PyObject* mat_row(PyObject* self, PyObject* obj)
 }
 
 
-LOLPIG_DEF( mat.columns, (
-    columns() -> [vec,]
-    Returns the columns as list of vectors
-    ))
+/** @ingroup lolpig
+    @p mat.columns
+    columns() -> [vec,] \n
+    Returns the columns as list of vectors \n
+*/
 PyObject* mat_columns(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -135,10 +153,11 @@ PyObject* mat_columns(PyObject* self)
     return ret;
 }
 
-LOLPIG_DEF( mat.rows, (
-    rows() -> [vec,]
-    Returns the rows as list of vectors
-    ))
+/** @ingroup lolpig
+    @p mat.rows
+    rows() -> [vec,] \n
+    Returns the rows as list of vectors \n
+*/
 PyObject* mat_rows(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -154,11 +173,12 @@ PyObject* mat_rows(PyObject* self)
 
 
 
-LOLPIG_DEF( mat.set_identity, (
-    set_identity() -> self
-    set_identity(float) -> self
-    Sets the identity matrix, with optional value other than 1.0.
-    ))
+/** @ingroup lolpig
+    @p mat.set_identity
+    set_identity() -> self \n
+    set_identity(float) -> self \n
+    Sets the identity matrix, with optional value other than 1.0. \n
+*/
 PyObject* mat_set_identity(PyObject* self, PyObject* args)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -172,10 +192,11 @@ PyObject* mat_set_identity(PyObject* self, PyObject* args)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( mat.transpose, (
-    transpose() -> self
-    Transposes the matrix, INPLACE
-    ))
+/** @ingroup lolpig
+    @p mat.transpose
+    transpose() -> self \n
+    Transposes the matrix, INPLACE \n
+*/
 PyObject* mat_transpose(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);
@@ -185,10 +206,9 @@ PyObject* mat_transpose(PyObject* self)
 }
 
 
-
-
-
-LOLPIG_DEF( mat.__mul__, )
+/** @ingroup lolpig
+    @p mat.__mul__
+*/
 PyObject* mat_mul__(PyObject* left, PyObject* right)
 {
     if (is_MatrixBase(left))
@@ -234,20 +254,16 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
             return pyobject_cast<PyObject*>(mleft->matrixMultCopy(r,len,1));
         }
         // mat * scalar
-#ifdef CPP11
         return VectorBase::binary_op_copy(left, right,
                         [](double l, double r) { return l * r; });
-#endif
     }
     else if (is_MatrixBase(right))
     {
         //MatrixBase* mright = pyobject_cast<MatrixBase*>(left);
 
         // scalar * mat
-#ifdef CPP11
         return VectorBase::binary_op_copy(right, left,
                         [](double l, double r) { return l * r; });
-#endif
     }
 
     setPythonError(PyExc_TypeError, SStream() << "Invalid operands for multiplication, "
@@ -259,10 +275,11 @@ PyObject* mat_mul__(PyObject* left, PyObject* right)
 
 // -------------- value copying ----------------
 
-LOLPIG_DEF( mat.transposed, (
-    transposed() -> mat
-    Returns the transpose of the matrix
-    ))
+/** @ingroup lolpig
+    @p mat.transposed
+    transposed() -> mat \n
+    Returns the transpose of the matrix \n
+*/
 PyObject* mat_transposed(PyObject* self)
 {
     MatrixBase* vec = pyobject_cast<MatrixBase*>(self);

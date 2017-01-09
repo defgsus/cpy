@@ -9,8 +9,10 @@ namespace PYTHON {
 extern "C" {
 
 
-LOLPIG_DEF( mat3.__new__, )
-PyObject* mat3_new(struct _typeobject* type, PyObject* args, PyObject* )
+/** @ingroup lolpig
+    @p mat3.__new__
+*/
+PyObject* mat3_new(_typeobject* type, PyObject* args, PyObject* )
 {
     Matrix33* vec = PyObject_NEW(Matrix33, type);
     vec->alloc(3*3);
@@ -49,14 +51,18 @@ int mat3_init(PyObject* self, PyObject* args, PyObject* )
 }*/
 
 
-LOLPIG_DEF( mat3.__repr__, )
+/** @ingroup lolpig
+    @p mat3.__repr__
+*/
 PyObject* mat3_repr(PyObject* self)
 {
     Matrix33* vec = pyobject_cast<Matrix33*>(self);
     return toPython(vec->toRepr("mat3"));
 }
 
-LOLPIG_DEF( mat3.__str__, )
+/** @ingroup lolpig
+    @p mat3.__str__
+*/
 PyObject* mat3_str(PyObject* self)
 {
     Matrix33* vec = pyobject_cast<Matrix33*>(self);
@@ -67,12 +73,13 @@ PyObject* mat3_str(PyObject* self)
 
 // ----------------- transformation setter ----------------
 
-LOLPIG_DEF( mat3.set_rotate_x, (
-    set_rotate_x(degree) -> self
-    Initializes the matrix with a rotation transform, INPLACE
-    >>> mat3().set_rotate_x(90).round()
-    mat3(1,0,0, 0,0,1, 0,-1,0)
-    ))
+/** @ingroup lolpig
+    @p mat3.set_rotate_x
+    set_rotate_x(degree) -> self \n
+    Initializes the matrix with a rotation transform, INPLACE \n
+    >>> mat3().set_rotate_x(90).round() \n
+    mat3(1,0,0, 0,0,1, 0,-1,0) \n
+*/
 PyObject* mat3_set_rotate_x(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -86,12 +93,13 @@ PyObject* mat3_set_rotate_x(PyObject* self, PyObject *obj)
 
 // -------------- transformation mult ----------------------
 
-LOLPIG_DEF(mat3.rotate_x, (
-        rotate_x(degree) -> self
-        Adds a rotation to the current matrix, INPLACE
-        >>> mat3().rotate_x(90).round()
-        mat3(1,0,0, 0,0,1, 0,-1,0)
-        ))
+/** @ingroup lolpig
+    @p mat3.rotate_x
+    rotate_x(degree) -> self \n
+    Adds a rotation to the current matrix, INPLACE \n
+    >>> mat3().rotate_x(90).round() \n
+    mat3(1,0,0, 0,0,1, 0,-1,0) \n
+*/
 PyObject* mat3_rotate_x(PyObject* self, PyObject *obj)
 {
     double degree;
@@ -109,12 +117,13 @@ PyObject* mat3_rotate_x(PyObject* self, PyObject *obj)
 
 // -------------- transformation mult copy ----------------------
 
-LOLPIG_DEF(mat3.rotated_x, (
-        rotated_x(degree) -> mat3
-        Returns a rotated matrix
-        >>> mat3().rotated_x(90).rounded()
-        mat3(1,0,0, 0,0,1, 0,-1,0)
-        ))
+/** @ingroup lolpig
+    @p mat3.rotated_x
+    rotated_x(degree) -> mat3 \n
+    Returns a rotated matrix \n
+    >>> mat3().rotated_x(90).rounded() \n
+    mat3(1,0,0, 0,0,1, 0,-1,0) \n
+*/
 PyObject* mat3_rotated_x(PyObject* self, PyObject *obj)
 {
     double degree;

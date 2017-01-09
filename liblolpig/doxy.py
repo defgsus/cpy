@@ -121,6 +121,8 @@ class DoxygenParser:
 
     def parse_files(self, filenames):
         self._parse(filenames)
+        if not self.functions and not self.classes:
+            self.error("No python-annotated classes or functions found")
         #self._resolve_types()
         #self._resolve_context(self.namespaces.values())
         #self._resolve_context(self.functions.values())
@@ -129,7 +131,7 @@ class DoxygenParser:
         #self._resolve_context(self.fields.values())
         #self._find_lolpig_def(self.functions.values())
         #self._find_lolpig_def(self.structs.values())
-        self.dump()
+        #self.dump()
 
     def dump(self):
         print("namespaces", self.namespaces)
@@ -181,76 +183,6 @@ class DoxygenParser:
         if id in self.classes:
             return self.classes[id]
         return default
-
-    def pos_str(self, line):
-        return "%s:%d" % (self.filename, line)
-
-    def _resolve_types(self):
-        # resolve referenced types
-        for t in self.types.values():
-            if t.ref_id:
-                t.is_fundamental = False
-                if not self.has_object(t.ref_id):
-                    raise ParseError("Unknown reference type id %s in %s" % (t.ref_id, t))
-                t.ref = self.get_object(t.ref_id)
-
-        # fill c_name field for all types
-        for t in self.types.values():
-            if t.ref_id and not t.c_name:
-                r = t.ref
-                if not r:
-                    continue
-                while not r.c_name and hasattr(r, "ref"):
-                    if not r.ref:
-                        break
-                    r = r.ref
-                t.c_name = r.c_name
-
-        # resolve types for function arguments and return-type
-        for func in self.functions.values():
-            if not self.has_object(func.return_type_id):
-                raise ParseError("Unknown reference type id %s for "
-                                 "function return type of %s" % (func.return_type_id, func))
-            func.return_type = self.get_object(func.return_type_id)
-            for arg in func.arguments:
-                if not self.has_object(arg.type_id):
-                    raise ParseError("Unknown reference type id %s for function %s argument" % (arg.ref_id, func))
-                arg.type = self.get_object(arg.type_id)
-
-        # resolve types for struct fields
-        for f in self.fields.values():
-            if not self.has_object(f.type_id):
-                raise ParseError("Unknown referenced field id %s in %s" % (f.type_id, f))
-            f.type = self.get_object(f.type_id)
-
-        # resolve struct bases
-        for s in self.structs.values():
-            if s.bases_id:
-                s.bases = []
-                for b in s.bases_id:
-                    if not self.has_object(b):
-                        raise ParseError("Unknown struct base reference %s in struct %s" % (b, s))
-                    s.bases.append(self.get_object(b))
-
-
-    def _resolve_context(self, iter):
-        for i in iter:
-            if i.file_id:
-                if not i.file_id in self.files:
-                    raise ParseError("Unknown file id %s in object %s" % (i.file_id, i))
-                i.file = self.files[i.file_id]
-            if i.context_id:
-                if not self.has_object(i.context_id):
-                    raise ParseError("Unknown context id %s in object %s" % (i.context_id, i))
-                i.context = self.get_object(i.context_id)
-
-    def _find_lolpig_def(self, iter):
-        for obj in iter:
-            if obj.file:# and func.file.name == self.filename:
-                try:
-                    obj.py_name, obj.py_doc = self._get_def(obj.file, obj.line, obj.c_name)
-                except ParseError:
-                    continue
 
     def _parse(self, filenames):
         """Generate doxygen-xml and parse it"""
@@ -339,6 +271,7 @@ class DoxygenParser:
             try:
                 for root, dirs, files in os.walk(xml_dir):
                     for f in files:
+                        print(f)
                         if f.startswith("group__") and f.endswith(".xml"):
                             group_name = f[7:f.index(".xml")]
                             if group_name in self.group_names:
@@ -353,7 +286,8 @@ class DoxygenParser:
             self.filenames = filenames
 
     def _parse_doxy_xml(self, filename):
-        self.push_stack("scanning xml %s" % filename)
+        print("parsing %s" % filename)
+        self.push_stack("parsing xml %s" % filename)
         root = ET.parse(filename).getroot()
         comp = root.find("compounddef")
         if not comp:

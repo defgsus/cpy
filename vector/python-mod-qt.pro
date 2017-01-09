@@ -34,8 +34,10 @@ SOURCES += \
 
 
 python_modfiles = \
+    $$PWD/pyimpl/vec_base.h \
     $$PWD/pyimpl/vec_base.cpp \
     $$PWD/pyimpl/vec3.cpp \
+    $$PWD/pyimpl/mat_base.h \
     $$PWD/pyimpl/mat_base.cpp \
     $$PWD/pyimpl/mat3.cpp \
 

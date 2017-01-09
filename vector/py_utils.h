@@ -3,15 +3,11 @@
     <p>(c) 2016, stefan.berke@modular-audio-graphics.com</p>
     <p>MIT License</p>
 
-    v3 - add CPP11 define
+    v3
 */
 
 #ifndef PY_UTILS_H
 #define PY_UTILS_H
-
-#if !defined(GCC_XML) && !defined(CPP11)
-#   define CPP11
-#endif
 
 #ifndef PYUTILS_PRINT
 #   include <iostream>
@@ -20,9 +16,7 @@
 
 #include <string>
 #include <sstream>
-#ifdef CPP11
-#   include <functional>
-#endif
+#include <functional>
 
 #include <python3.4/Python.h>
 #include <python3.4/structmember.h>
@@ -35,10 +29,6 @@
 
 #ifndef Py_RETURN_SELF
 #   define Py_RETURN_SELF Py_RETURN_OBJECT(self)
-#endif
-
-#ifndef LOLPIG_DEF
-#   define LOLPIG_DEF(name, doc)
 #endif
 
 
@@ -114,12 +104,10 @@ void setPythonError(PyObject* exc, const std::string& txt);
 
 std::string typeName(PyObject* arg, bool expand_sequences = false);
 
-#ifdef CPP11
 /** Iterates over every item in the PySequence. If seq is not sequencable,
     sets PyErr and returns false. If foo returns false, the iteration is stopped
     and false is returned. */
 bool iterateSequence(PyObject* seq, std::function<bool(PyObject*item)> foo);
-#endif
 
 /** Verify that index < len, raise IndexError otherwise */
 bool checkIndex(Py_ssize_t index, Py_ssize_t len);
@@ -144,8 +132,6 @@ public:
     operator PyObject*() { return toPython(sstream_.str()); }
 };
 
-
-#ifndef GCC_XML
 
 // #################### template impl. #####################
 
@@ -269,7 +255,6 @@ PyObject* toList(const T* vec, size_t num)
     return o;
 }
 
-#endif // GCC_XML
 
 
 } // namespace PyUtils

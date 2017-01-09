@@ -6,10 +6,7 @@
 #include <sstream>
 #include <cmath>
 #include "../py_utils.h"
-#ifdef CPP11
-#   include <functional>
-#endif
-
+#include <functional>
 
 #if 0
 #   define PYVEC_DEBUG(arg__) { std::cout << arg__ << std::endl; }
@@ -38,8 +35,12 @@ VectorBase* createVector(double x, double y, double z);
 
 extern "C" {
 
-    /** Base vector class and variable length vector */
-    LOLPIG_DEF(vec, The basic vector class)
+    /** @addtogroup lolpig
+        @{ */
+
+    /** @p vec
+        Base vector class and variable length vector
+    */
     struct VectorBase {
         PyObject_HEAD
         double* v;
@@ -59,7 +60,6 @@ extern "C" {
         std::string toString(const std::string& class_name, int group=0) const;
         std::string toRepr(const std::string& class_name, int group=0) const;
 
-#ifdef CPP11
         /** Returns a deep copy of the class (or subclass)
             with op applied to each element. */
         VectorBase* unary_op_copy(std::function<double(double)> op) const;
@@ -73,7 +73,6 @@ extern "C" {
             like vec*scalar, scalar*vec, vec*vec, etc.. */
         static PyObject* binary_op_copy(PyObject* left, PyObject* right,
                                        std::function<double(double l, double r)> op);
-#endif
 
         /** Scans any sequence or sub-sequence into @p v.
          * Eg. It understands: 1 or (1,) or (1,2),3, ((1,2),(3,4)), etc..
@@ -94,21 +93,27 @@ extern "C" {
         double lengthSquared() const;
     };
 
+    /** @} */
+
     VectorBase* new_VectorBase();
     bool is_VectorBase(PyObject*);
+    size_t sizeof_VectorBase();
 
 
-
-    LOLPIG_DEF(vec3, 3-dimensional vector class)
+    /** @ingroup lolpig
+        @p vec3
+        3-dimensional vector class */
     struct Vector3 : public VectorBase { };
 
     Vector3* new_Vector3();
     bool is_Vector3(PyObject*);
+    size_t sizeof_Vector3();
 
 
 
-    /** iterator for vec classes */
-    LOLPIG_DEF(_vec_iter, Vector iterator)
+    /** @ingroup lolpig
+        @p _vec_iter
+        Iterator for vec classes */
     struct VectorIter {
         PyObject_HEAD
         VectorBase* vec;
@@ -121,6 +126,7 @@ extern "C" {
 
     VectorIter* new_VectorIter();
     bool is_VectorIter(PyObject*);
+    size_t sizeof_VectorIter();
 
 } // extern "C"
 	

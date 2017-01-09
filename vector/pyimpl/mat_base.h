@@ -9,8 +9,9 @@ namespace PYTHON {
 
 extern "C" {
 
-    /** Intermediate matrix interface */
-    LOLPIG_DEF(mat, The matrix base class)
+    /** @ingroup lolpig
+        @p mat
+        Intermediate matrix interface */
     struct MatrixBase : VectorBase
     {
         int num_rows,
@@ -29,15 +30,20 @@ extern "C" {
 
     MatrixBase* new_MatrixBase();
     bool is_MatrixBase(PyObject*);
+    size_t sizeof_MatrixBase();
 
     MatrixBase* createMatrix(int rows, int columns, double* data = NULL);
 
 
-    LOLPIG_DEF(mat3, A classic 3x3 rotation matrix)
+    /** @ingroup lolpig
+        @p mat3
+        A classic 3x3 rotation matrix
+    */
     struct Matrix33 : MatrixBase { };
 
     Matrix33* new_Matrix33();
     bool is_Matrix33(PyObject*);
+    size_t sizeof_Matrix33();
 
 
 } // extern "C"

@@ -1,22 +1,26 @@
 #include <vector>
+#include <limits>
+
 #include "vec_base.h"
 #include "mat_base.h"
 #include "vector_math.h"
-
-#ifdef CPP11
-#   include <limits>
-#endif
 
 namespace MO {
 namespace PYTHON {
 
 using namespace PyUtils;
 
+
 extern "C" {
 
+size_t sizeof_VectorBase() { return sizeof(VectorBase); }
+size_t sizeof_Vector3() { return sizeof(Vector3); }
+size_t sizeof_VectorIter() { return sizeof(VectorIter); }
 
-LOLPIG_DEF( vec.__new__, )
-PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
+/** @ingroup lolpig
+    @p vec.__new__
+*/
+PyObject* vec_new(_typeobject* type, PyObject* args, PyObject* )
 {
     int len = VectorBase::parseSequence(args);
     if (len<0)
@@ -33,8 +37,10 @@ PyObject* vec_new(struct _typeobject* type, PyObject* args, PyObject* )
     return pyobject_cast<PyObject*>(vec);
 }
 
-/*
-LOLPIG_DEF( vec.__init__, )
+#if 0
+/** @ingroup lolpig
+    @p vec.__init__
+*/
 int vec_init(PyObject* self, PyObject* args, PyObject* )
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -44,9 +50,11 @@ int vec_init(PyObject* self, PyObject* args, PyObject* )
     PRINT("NEW " << vec->toString());
     return 0;
 }
-*/
+#endif
 
-LOLPIG_DEF( vec.__dealloc__, )
+/** @ingroup lolpig
+    @p vec.__dealloc__
+*/
 void vec_free(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -54,7 +62,9 @@ void vec_free(PyObject* self)
     self->ob_type->tp_free(self);
 }
 
-LOLPIG_DEF( vec.copy, )
+/** @ingroup lolpig
+    @p vec.copy
+*/
 PyObject* vec_copy(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -62,14 +72,18 @@ PyObject* vec_copy(PyObject* self)
 }
 
 
-LOLPIG_DEF( vec.__repr__, )
+/** @ingroup lolpig
+    @p vec.__repr__
+*/
 PyObject* vec_repr(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(vec->toRepr("vec"));
 }
 
-LOLPIG_DEF( vec.__str__, )
+/** @ingroup lolpig
+    @p vec.__str__
+*/
 PyObject* vec_str(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -77,25 +91,31 @@ PyObject* vec_str(PyObject* self)
 }
 
 
-/*
-LOLPIG_DEF( vec.test@get, )
+#if 0
+/** @ingroup lolpig
+    @p vec.test@get
+*/
 PyObject* vec_test__getter(PyObject* self, void*)
 {
     //VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(23.);
 }
 
-LOLPIG_DEF( vec.test@set, )
+/** @ingroup lolpig
+    @p vec.test@set
+*/
 int vec_test__setter(PyObject* self, PyObject* arg, void*)
 {
     //VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return 0;
 }
-*/
+#endif
 
 // ------------------------ sequence methods ---------------------------
 
-LOLPIG_DEF( vec.__contains__, )
+/** @ingroup lolpig
+    @p vec.__contains__
+*/
 int vec_contains(PyObject* self, PyObject* obj)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -136,7 +156,9 @@ int vec_contains(PyObject* self, PyObject* obj)
     return 0;
 }
 
-LOLPIG_DEF( vec.__getitem__, )
+/** @ingroup lolpig
+    @p vec.__getitem__
+*/
 PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -145,7 +167,9 @@ PyObject* vec_getitem(PyObject* self, Py_ssize_t idx)
     return toPython(vec->v[idx]);
 }
 
-LOLPIG_DEF( vec.__setitem__, )
+/** @ingroup lolpig
+    @p vec.__setitem__
+*/
 int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -156,7 +180,9 @@ int vec_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
     return 0;
 }
 
-LOLPIG_DEF( vec.__len__, )
+/** @ingroup lolpig
+    @p vec.__len__
+*/
 Py_ssize_t vec_len(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -164,7 +190,9 @@ Py_ssize_t vec_len(PyObject* self)
 }
 
 
-LOLPIG_DEF( vec.__iter__, )
+/** @ingroup lolpig
+    @p vec.__iter__
+*/
 PyObject* vec_iter(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -176,7 +204,9 @@ PyObject* vec_iter(PyObject* self)
     return pyobject_cast<PyObject*>(iter);
 }
 
-LOLPIG_DEF( _vec_iter.__iter__, )
+/** @ingroup lolpig
+    @p _vec_iter.__iter__
+*/
 PyObject* veciter_iter(PyObject* self)
 {
     //Py_RETURN_SELF;
@@ -185,7 +215,9 @@ PyObject* veciter_iter(PyObject* self)
     Py_RETURN_OBJECT(iter);
 }
 
-LOLPIG_DEF( _vec_iter.__next__, )
+/** @ingroup lolpig
+    @p _vec_iter.__next__
+*/
 PyObject* veciter_next(PyObject* self)
 {
     VectorIter* iter = pyobject_cast<VectorIter*>(self);
@@ -201,7 +233,9 @@ PyObject* veciter_next(PyObject* self)
     return toPython(iter->vec->v[iter->iter++]);
 }
 
-LOLPIG_DEF( _vec_iter.__dealloc__, )
+/** @ingroup lolpig
+    @p _vec_iter.__dealloc__
+*/
 void veciter_dealloc(PyObject* self)
 {
     VectorIter* iter = pyobject_cast<VectorIter*>(self);
@@ -212,9 +246,10 @@ void veciter_dealloc(PyObject* self)
 
 // ------------ attributes ----------------
 
-LOLPIG_DEF( vec.__getattro__, (
-        Swizzle access
-        ))
+/** @ingroup lolpig
+    @p vec.__getattro__
+    Swizzle access
+*/
 PyObject* vec_getattro(PyObject* self, PyObject* name)
 {
     std::string s;
@@ -222,7 +257,6 @@ PyObject* vec_getattro(PyObject* self, PyObject* name)
     {
         VectorBase* vec = pyobject_cast<VectorBase*>(self);
         std::vector<double> ret;
-#ifdef CPP11
         for (auto c : s)
         {
             int idx = -1;
@@ -242,16 +276,16 @@ PyObject* vec_getattro(PyObject* self, PyObject* name)
         if (ret.size() == 1)
             toPython(ret[0]);
         return pyobject_cast<PyObject*>(createVector(ret.size(), ret.data()));
-#endif
     }
     if (PyErr_Occurred())
         return NULL;
     return PyObject_GenericGetAttr(self, name);
 }
 
-LOLPIG_DEF( vec.__setattro__, (
-        Swizzle write access
-        ))
+/** @ingroup lolpig
+    @p vec.__setattro__
+    Swizzle write access
+*/
 int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
 {
     std::string s;
@@ -259,7 +293,6 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
     {
         VectorBase* vec = pyobject_cast<VectorBase*>(self);
         std::vector<int> idxs;
-#ifdef CPP11
         for (auto c : s)
         {
             int idx = -1;
@@ -300,7 +333,6 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
         for (auto idx : idxs)
             vec->v[idx] = *ptr++;
         return 0;
-#endif
     }
     if (PyErr_Occurred())
         return -1;
@@ -310,12 +342,13 @@ int vec_setattro(PyObject* self, PyObject* name, PyObject* args)
 
 // ------------ splitting -----------------
 
-LOLPIG_DEF( vec.split, (
-    split(int) -> [vec,]
-    Returns a list of vectors split at even intervals.
-    >>> vec(1,2,3,4).split(2)
-    [vec(1, 2), vec(3, 4)]
-    ))
+/** @ingroup lolpig
+    @p vec.split
+    split(int) -> [vec,] \n
+    Returns a list of vectors split at even intervals. \n
+    >>> vec(1,2,3,4).split(2) \n
+    [vec(1, 2), vec(3, 4)] \n
+*/
 PyObject* vec_split(PyObject* self, PyObject* obj)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -344,7 +377,9 @@ PyObject* vec_split(PyObject* self, PyObject* obj)
 
 // --------------- compare --------------------------
 
-LOLPIG_DEF( vec.__eq__, )
+/** @ingroup lolpig
+    @p vec.__eq__
+*/
 PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -408,33 +443,37 @@ PyObject* vec_cmp(PyObject* self, PyObject* arg, int op)
 
 // -------------- number stuff ----------------------
 
-LOLPIG_DEF( vec.__abs__, )
+/** @ingroup lolpig
+    @p vec.__abs__
+*/
 PyObject* vec_abs(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     return pyobject_cast<PyObject*>(vec->unary_op_copy([](double x)
         { return std::abs(x); }));
-#endif
 }
 
-LOLPIG_DEF( vec.__neg__, )
+/** @ingroup lolpig
+    @p vec.__neg__
+*/
 PyObject* vec_neg(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     return pyobject_cast<PyObject*>(vec->unary_op_copy([](double x)
         { return -x; }));
-#endif
 }
 
-LOLPIG_DEF( vec.__pos__, )
+/** @ingroup lolpig
+    @p vec.__pos__
+*/
 PyObject* vec_pos(PyObject* self)
 {
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__round__, )
+/** @ingroup lolpig
+    @p vec.__round__
+*/
 PyObject* vec_round__(PyObject* self, PyObject* args)
 {
     long digits = 0;
@@ -444,52 +483,49 @@ PyObject* vec_round__(PyObject* self, PyObject* args)
             return NULL;
     }
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     return pyobject_cast<PyObject*>(vec->unary_op_copy([=](double x)
         { return pythonRound(x, digits); }));
-#endif
 }
 
-LOLPIG_DEF( vec.__ipow__, (
-        __ipow__(float|seq) -> self
-        Applies the pow() function to all elements, INPLACE
-        >>> v = vec(1,2,3),
-        vec(1,2,3)
-        >>> v **= 2
-        vec(1,4,9)
-        >>> v **= (3,2,1)
-        vec(1,16,9)
-        ))
+/** @ingroup lolpig
+    @p vec.__ipow__
+    __ipow__(float|seq) -> self \n
+    Applies the pow() function to all elements, INPLACE \n
+    >>> v = vec(1,2,3) \n
+    vec(1,2,3) \n
+    >>> v **= 2 \n
+    vec(1,4,9) \n
+    >>> v **= (3,2,1) \n
+    vec(1,16,9) \n
+*/
 PyObject* vec_ipow__(PyObject* self, PyObject* arg, PyObject* /*mod*/)
 {
     //PRINT(typeName(arg,true) << " " << typeName(mod, true));
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool err = false;
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&err](double& l, double r)
     {
         if (!pythonPower(&l, l, r))
             err = true;
     }))
         return NULL;
-#endif
     if (err)
         return NULL;
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__pow__, (
-        pow(vec, float|seq) -> vec
-        Applies the pow() function to all elements
-        >>> pow(vec(1,2,3), 2)
-        vec(1,4,9)
-        >>> pow(vec(1,2,3), (1,2,3))
-        vec(1,4,27)
-        ))
+/** @ingroup lolpig
+    @p vec.__pow__
+    pow(vec, float|seq) -> vec \n
+    Applies the pow() function to all elements \n
+    >>> pow(vec(1,2,3), 2) \n
+    vec(1,4,9) \n
+    >>> pow(vec(1,2,3), (1,2,3)) \n
+    vec(1,4,27) \n
+*/
 PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
 {
     bool err = false;
-#ifdef CPP11
     PyObject* ret = VectorBase::binary_op_copy(left, right, [&err](double l, double r)
     {
         if (!pythonPower(&l, l, r))
@@ -499,89 +535,88 @@ PyObject* vec_pow__(PyObject* left, PyObject* right, PyObject* /*mod*/)
     if (err)
         return NULL;
     return ret;
-#endif
 }
 
 
 
 // -------------- arithmetic ----------------------
 
-LOLPIG_DEF( vec.__iadd__, )
+/** @ingroup lolpig
+    @p vec.__iadd__
+*/
 PyObject* vec_iadd(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l += r; }))
         return NULL;
-#endif
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__add__, )
+/** @ingroup lolpig
+    @p vec.__add__
+*/
 PyObject* vec_add(PyObject* left, PyObject* right)
 {
-#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l + r; });
-#endif
 }
 
 
-LOLPIG_DEF( vec.__isub__, )
+/** @ingroup lolpig
+    @p vec.__isub__
+*/
 PyObject* vec_isub(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l -= r; }))
         return NULL;
-#endif
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__sub__, )
+/** @ingroup lolpig
+    @p vec.__sub__
+*/
 PyObject* vec_sub(PyObject* left, PyObject* right)
 {
-#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l - r; });
-#endif
 }
 
 
-LOLPIG_DEF( vec.__imul__, )
+/** @ingroup lolpig
+    @p vec.__imul__
+*/
 PyObject* vec_imul(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [](double& l, double r){ l *= r; }))
         return NULL;
-#endif
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__mul__, )
+/** @ingroup lolpig
+    @p vec.__mul__
+*/
 PyObject* vec_mul(PyObject* left, PyObject* right)
 {
-#ifdef CPP11
     return VectorBase::binary_op_copy(left, right,
                                      [](double l, double r){ return l * r; });
-#endif
 }
 
 
-LOLPIG_DEF( vec.__itruediv__, )
+/** @ingroup lolpig
+    @p vec.__itruediv__
+*/
 PyObject* vec_itruediv(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool zero = false;
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
     {
         if (r == 0.) { zero = true; return; }
         l /= r;
     }))
         return NULL;
-#endif
     if (zero)
     {
         setPythonError(PyExc_ZeroDivisionError, "vector division by zero");
@@ -590,11 +625,12 @@ PyObject* vec_itruediv(PyObject* self, PyObject* arg)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__truediv__, )
+/** @ingroup lolpig
+    @p vec.__truediv__
+*/
 PyObject* vec_truediv(PyObject* left, PyObject* right)
 {
     bool zero = false;
-#ifdef CPP11
     PyObject* ret = VectorBase::binary_op_copy(left, right, [&zero](double l, double r)
     {
         if (r == 0.) { zero = true; return 0.; }
@@ -606,25 +642,24 @@ PyObject* vec_truediv(PyObject* left, PyObject* right)
         return NULL;
     }
     return ret;
-#endif
 }
 
 
 
 
-LOLPIG_DEF( vec.__imod__, )
+/** @ingroup lolpig
+    @p vec.__imod__
+*/
 PyObject* vec_imod(PyObject* self, PyObject* arg)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
     bool zero = false;
-#ifdef CPP11
     if (!vec->binary_op_inplace(arg, [&zero](double& l, double r)
     {
         if (r == 0.) { zero = true; return; }
         l = pythonModulo(l, r);
     }))
         return NULL;
-#endif
     if (zero)
     {
         setPythonError(PyExc_ZeroDivisionError, "vector modulo with zero value");
@@ -633,11 +668,12 @@ PyObject* vec_imod(PyObject* self, PyObject* arg)
     Py_RETURN_SELF;
 }
 
-LOLPIG_DEF( vec.__mod__, )
+/** @ingroup lolpig
+    @p vec.__mod__
+*/
 PyObject* vec_mod(PyObject* left, PyObject* right)
 {
     bool zero = false;
-#ifdef CPP11
     PyObject* ret = VectorBase::binary_op_copy(left, right, [&zero](double l, double r)
     {
         if (r == 0.) { zero = true; return 0.; }
@@ -649,17 +685,17 @@ PyObject* vec_mod(PyObject* left, PyObject* right)
         return NULL;
     }
     return ret;
-#endif
 }
 
 
 // ----------------- inplace methods -------------------------
 
-LOLPIG_DEF( vec.round, (
-    round() -> self
-    round(num_digits) -> self
-    Applies the round() function to all elements, INPLACE
-    ))
+/** @ingroup lolpig
+    @p vec.round
+    round() -> self \n
+    round(num_digits) -> self \n
+    Applies the round() function to all elements, INPLACE \n
+*/
 PyObject* vec_round(PyObject* self, PyObject* args)
 {
     long digits = 0;
@@ -669,33 +705,31 @@ PyObject* vec_round(PyObject* self, PyObject* args)
             return NULL;
     }
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     vec->unary_op_inplace([=](double x){ return pythonRound(x, digits); });
-#endif
     Py_RETURN_SELF;
 }
 
 
-LOLPIG_DEF( vec.floor, (
-    floor() -> self
+/** @ingroup lolpig
+    @p vec.floor
+    floor() -> self \n
     Applies the floor() function to all elements, INPLACE
-    ))
+*/
 PyObject* vec_floor(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     vec->unary_op_inplace([](double x){ return std::floor(x); });
-#endif
     Py_RETURN_SELF;
 }
 
 
-LOLPIG_DEF( vec.normalize, (
-    normalize() -> self
-    Normalizes the vector, INPLACE
-    This essentially makes the vector length 1
-    Does nothing when vector is length 0
-    ))
+/** @ingroup lolpig
+    @p vec.normalize
+    normalize() -> self \n
+    Normalizes the vector, INPLACE \n
+    This essentially makes the vector length 1 \n
+    Does nothing when vector is length 0 \n
+*/
 PyObject* vec_normalize(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -703,9 +737,7 @@ PyObject* vec_normalize(PyObject* self)
     if (l)
     {
         l = 1. / std::sqrt(l);
-#ifdef CPP11
         vec->unary_op_inplace([=](double x){ return x*l; });
-#endif
     }
     Py_RETURN_SELF;
 }
@@ -714,21 +746,23 @@ PyObject* vec_normalize(PyObject* self)
 
 // ----------------- getter -------------------------------
 
-LOLPIG_DEF(vec.length, (
-    length() -> float
+/** @ingroup lolpig
+    @p vec.length
+    length() -> float \n
     Returns euclidean length of vector.
-    ))
+*/
 PyObject* vec_length(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
     return toPython(std::sqrt(vec->lengthSquared()));
 }
 
-LOLPIG_DEF(vec.length_squared, (
-    length_squared() -> float
-    Returns square of euclidean length of vector.
+/** @ingroup lolpig
+    @p vec.length_squared
+    length_squared() -> float \n
+    Returns square of euclidean length of vector. \n
     Faster than length()
-    ))
+*/
 PyObject* vec_length_squared(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -736,11 +770,12 @@ PyObject* vec_length_squared(PyObject* self)
 }
 
 
-LOLPIG_DEF(vec.distance, (
-    distance(seq) -> float
-    Returns euclidean distance between this and other vector.
+/** @ingroup lolpig
+    @p vec.distance
+    distance(seq) -> float \n
+    Returns euclidean distance between this and other vector. \n
     Length must be equal.
-    ))
+*/
 PyObject* vec_distance(PyObject* self, PyObject* args)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -753,11 +788,12 @@ PyObject* vec_distance(PyObject* self, PyObject* args)
     return toPython(std::sqrt(l));
 }
 
-LOLPIG_DEF(vec.distance_squared, (
-    distance_squared(seq) -> float
-    Returns square of euclidean distance between this and other vector.
+/** @ingroup lolpig
+    @p vec.distance_squared
+    distance_squared(seq) -> float \n
+    Returns square of euclidean distance between this and other vector. \n
     Length must be equal.
-    ))
+*/
 PyObject* vec_distance_squared(PyObject* self, PyObject* args)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -771,11 +807,12 @@ PyObject* vec_distance_squared(PyObject* self, PyObject* args)
 }
 
 
-LOLPIG_DEF(vec.dot, (
-    dot(seq) -> float
-    Returns dot product of this vector and other sequence.
-    Length must be equal.
-    ))
+/** @ingroup lolpig
+    @p vec.dot
+    dot(seq) -> float \n
+    Returns dot product of this vector and other sequence. \n
+    Number of elements must be equal.
+*/
 PyObject* vec_dot(PyObject* self, PyObject* args)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -797,26 +834,29 @@ PyObject* vec_dot(PyObject* self, PyObject* args)
 
 
 
-
 // -------------- copy functions --------------------
 
-LOLPIG_DEF( vec.rounded, )
+/** @ingroup lolpig
+    @p vec.rounded
+*/
 PyObject* vec_rounded(PyObject* self, PyObject* args)
 {
     return vec_round__(self, args);
 }
 
-LOLPIG_DEF( vec.floored, )
+/** @ingroup lolpig
+    @p vec.floored
+*/
 PyObject* vec_floored(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
-#ifdef CPP11
     return pyobject_cast<PyObject*>(
         vec->unary_op_copy([](double x) { return std::floor(x); }));
-#endif
 }
 
-LOLPIG_DEF( vec.normalized, )
+/** @ingroup lolpig
+    @p vec.normalized
+*/
 PyObject* vec_normalized(PyObject* self)
 {
     VectorBase* vec = pyobject_cast<VectorBase*>(self);
@@ -824,10 +864,8 @@ PyObject* vec_normalized(PyObject* self)
     if (!l)
         Py_RETURN_SELF;
     l = 1./std::sqrt(l);
-#ifdef CPP11
     return pyobject_cast<PyObject*>(
         vec->unary_op_copy([=](double x) { return x * l; }));
-#endif
 }
 
 
@@ -911,7 +949,6 @@ VectorBase* VectorBase::copy() const
 }
 
 
-#ifdef CPP11
 VectorBase* VectorBase::unary_op_copy(std::function<double(double)> op) const
 {
     VectorBase* vec = this->copyClass();
@@ -1097,8 +1134,6 @@ PyObject* VectorBase::binary_op_copy(PyObject* left, PyObject* right,
 
 
 
-#endif
-
 std::string VectorBase::toString(const std::string& name, int group) const
 {
     // auto square-matrix formatting
@@ -1195,11 +1230,7 @@ int VectorBase::parseSequence(PyObject* seq, double* v, int max_len, int def_len
     if (def_len==0 && max_len)
         def_len = max_len;
     if (max_len==0)
-    {
-#ifdef CPP11
         max_len = std::numeric_limits<int>::max();
-#endif
-    }
     // scalar value fills whole def_len
     if (fromPython(seq, v))
     {
