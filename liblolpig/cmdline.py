@@ -10,7 +10,7 @@ class Arguments:
         self.input_filenames = []
         self.namespaces = []
         self.is_export = False
-        self.is_doxygen = False
+        self.is_gccxml = False
 
     def dump(self):
         print("""
@@ -52,7 +52,7 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
         if not argv:
             import sys
             argv = sys.argv
-        param = [("-i", -1), ("-n", -1), ("-o", 1), ("-m", 1), ("-export", 0), ("-doxygen", 0)]
+        param = [("-i", -1), ("-n", -1), ("-o", 1), ("-m", 1), ("-export", 0), ("-gccxml", 0)]
         expect = ""
         expect_len = 0
         arg_cnt = 0
@@ -65,8 +65,8 @@ Usage: lolpig.py [-export] -i files -o file [-m modulename] [-n namespaces]
             if expect:
                 if expect == "-export":
                     self.is_export = True
-                elif expect == "-doxygen":
-                    self.is_doxygen = True
+                elif expect == "-gccxml":
+                    self.is_gccxml = True
                 elif expect == "-i":
                     self.input_filenames.append(a)
                 elif expect == "-n":
@@ -131,10 +131,10 @@ def _render_module(a):
     """Renders the module code from scanning cpp files"""
     from liblolpig import Renderer
 
-    if a.is_doxygen:
-        ctx = _get_doxygen(a.input_filenames)
-    else:
+    if a.is_gccxml:
         ctx = _get_gcc_xml(a.input_filenames)
+    else:
+        ctx = _get_doxygen(a.input_filenames)
 
     ctx.module_name = a.module_name
     ctx.header_name = a.header_inc
@@ -154,6 +154,7 @@ def _render_export(a):
 
     r = Renderer(ctx)
     r.namespaces = a.namespaces
+    r.is_gccxml = a.is_gccxml
     r.write_to_file(a.output_cpp, r.render_export())
 
 
@@ -164,8 +165,8 @@ def process_commands(argv=None):
 
     #-export -i example/export/stuff.py -o example/export/pydef -n MO PYTHON
     #s = "-i vector/pyimpl/vec_base.cpp vector/pyimpl/mat_base.cpp vector/pyimpl/vec3.cpp -o vector/vec_module -n MOP -m vec"
-    #s = "-doxygen -i test_doxygen/code/vec_base.h -o test_doxygen/gen/vec_module -n MOP -m vec"
-    s = "-doxygen -i example/test.cpp -o example/test_module -m module"
+    s = "-i test_doxygen/code/vec_base.h -o test_doxygen/gen/vec_module -n MOP -m vec"
+    #s = "-i example/test.cpp -o example/test_module -m module"
     argv = ["lolpig.py", ] + s.split()
 
 

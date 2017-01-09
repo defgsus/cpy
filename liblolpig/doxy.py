@@ -391,6 +391,37 @@ class DoxygenParser:
             txt += node.tail.strip()
         return txt
 
+    def _strip_doc(self, s):
+        if not s:
+            return s
+        strip_chars = [" ", "\t"]
+        accept_chars = strip_chars + ["\n"]
+        i = 0
+        while i < len(s):
+            if s[i] in strip_chars:
+                s = s[:i] + s[i:]
+            elif s[i] not in accept_chars:
+                break
+            i += 1
+        i = len(s)-1
+        while i >= 0:
+            if s[i] in strip_chars:
+                s = s[:i] + s[i:]
+            elif s[i] not in accept_chars:
+                break
+            i -= 1
+        return s
+
+    def _reformat_doc(self, s):
+        while True:
+            l = len(s)
+            s = s.replace(" \n", "\n")
+            s = s.replace("\n ", "\n")
+            s = s.replace("\n\n", "\n")
+            if l == len(s):
+                break
+        return s.strip()
+
     def _get_sub_doc(self, node):
         py_doc = ""
         if node.text is not None:
@@ -401,26 +432,26 @@ class DoxygenParser:
         if node.tag == "computeroutput":
             py_doc = self.py_tag_open + py_doc + self.py_tag_close
         if node.tail:
-            py_doc += node.tail.strip()
-        return py_doc
+            py_doc += node.tail
+        return self._strip_doc(py_doc)
 
     def _get_doc(self, node):
         dnode = node.find("detaileddescription")
         if dnode is None:
             self.error("No <detaileddescription> in %s" % node)
-        py_doc = self._get_sub_doc(dnode).strip()
-        if not py_doc.startswith(self.py_tag_open):
-            self.error("No python name defined in documentation for %s" % dnode)
-        py_name = py_doc[len(self.py_tag_open):py_doc.find(self.py_tag_close)]
-        py_doc = py_doc[py_doc.find(self.py_tag_close)+len(self.py_tag_close):-1]
+        py_doc = self._get_sub_doc(dnode)
+        if not py_doc.strip().startswith(self.py_tag_open):
+            self.error("No python name defined in documentation '%s' for %s" % (py_doc, dnode))
+        py_name = py_doc[py_doc.find(self.py_tag_open)+len(self.py_tag_open):py_doc.find(self.py_tag_close)]
+        py_doc = py_doc[py_doc.find(self.py_tag_close)+len(self.py_tag_close):]
 
         dnode = node.find("briefdescription")
         if dnode is not None:
-            doc = self._get_sub_doc(dnode).strip()
+            doc = self._get_sub_doc(dnode)
             if doc:
                 py_doc = doc + "\n" + py_doc
 
-        return py_name, py_doc
+        return py_name, self._reformat_doc(py_doc)
 
     def _get_type(self, node):
         tnode = node.find("type")
@@ -469,181 +500,3 @@ class DoxygenParser:
         self.pop_stack()
         self.structs.setdefault(o.id, o)
 
-
-    """
-    def _parse_context(self, node, ctx):
-        ctx.id = node.attrib.get("id", None)
-        ctx.line = int(node.attrib.get("line", 0))
-        ctx.end_line = int(node.attrib.get("endline", ctx.line))
-        ctx.context_id = node.attrib.get("context", None)
-        ctx.file_id = node.attrib.get("file", None)
-        ctx.mangled = node.attrib.get("mangled", None)
-
-    def _parse_file(self, node):
-        t = XmlFile()
-        t.id = node.attrib.get("id")
-        t.name = node.attrib.get("name")
-        self.files.setdefault(t.id, t)
-
-    def _parse_namespace(self, node):
-        t = XmlNamespace()
-        self._parse_context(node, t)
-        t.c_name = node.attrib.get("name")
-        self.namespaces.setdefault(t.id, t)
-
-    def _parse_any_type(self, node):
-        t = XmlType()
-        self._parse_context(node, t)
-        t.c_name = node.attrib.get("name")
-        t.size = int(node.attrib.get("size", 0))
-        t.ref_id = node.attrib.get("type", None)
-        self.types.setdefault(t.id, t)
-        return t
-
-    def _parse_fundamental_type(self, node):
-        self._parse_any_type(node)
-
-    def _parse_pointer_type(self, node):
-        t = self._parse_any_type(node)
-        t.is_pointer = True
-
-    def _parse_reference_type(self, node):
-        t = self._parse_any_type(node)
-        t.is_reference = True
-
-    def _parse_array_type(self, node):
-        t = self._parse_any_type(node)
-        s = node.attrib.get("min", "0").replace("u", "")
-        t.array_min = int(s) if s else 0
-        s = node.attrib.get("max", "0").replace("u", "")
-        t.array_max = int(s) if s else 0
-        t.is_array = True
-
-    def _parse_cv_type(self, node):
-        t = self._parse_any_type(node)
-        t.is_const = True
-
-    def _parse_function_type(self, node):
-        t = self._parse_any_type(node)
-        t.is_function = True
-
-    def _parse_union_type(self, node):
-        t = self._parse_any_type(node)
-        t.is_union = True
-
-    def _parse_typedef(self, node):
-        t = self._parse_any_type(node)
-        t.is_typedef = True
-
-    def _parse_enum(self, node):
-        t = self._parse_any_type(node)
-        t.is_enum = True
-
-    def _parse_struct(self, node):
-        s = XmlStruct()
-        self._parse_context(node, s)
-        s.c_name = node.attrib.get("name")
-        s.size = int(node.attrib.get("size", 0))
-        s.bases_id = node.attrib.get("bases", "").split()
-        self.structs.setdefault(s.id, s)
-
-    def _parse_function(self, node):
-        func = XmlFunction()
-        self._parse_context(node, func)
-        func.c_name = node.attrib.get("name")
-        func.return_type_id = node.attrib.get("returns")
-        for child in node:
-            if child.tag == "Argument":
-                self._parse_argument(func, child)
-        self.functions.setdefault(func.id, func)
-
-    def _parse_argument(self, func, node):
-        a = XmlArgument()
-        a.c_name = node.attrib.get("name")
-        a.type_id = node.attrib.get("type")
-        func.arguments.append(a)
-
-    def _parse_field(self, node):
-        field = XmlField()
-        self._parse_context(node, field)
-        field.type_id = node.attrib.get("type")
-        self.fields.setdefault(field.id, field)
-
-    def _parse_class(self, node):
-        c = XmlClass()
-        self._parse_context(node, c)
-        c.c_name = node.attrib.get("name")
-        self.classes.setdefault(c.id, c)
-    """
-
-    def _get_def(self, file, line, name):
-        """
-        Returns python name and doc-string from the LOLPIG_DEF macro.
-        line expected to point at the beginning of the function/struct body
-        :return: tuple
-        """
-        if file.do_scan:
-            file.do_scan = False
-            if file.name.startswith("<"):# or file.name.startswith("/")):
-                return None, None
-            with open(file.name) as f:
-                file.content = f.read()
-            if not "LOLPIG_DEF" in file.content:
-                file.content = None
-            else:
-                file.lines = file.content.split("\n")
-
-        if not file.content:
-            return None, None
-        if line < 1 or line >= len(file.lines):
-            raise ParseError("line number %d out of range" % line)
-
-        endline = line-1
-        if file.lines[endline].strip() == "{":
-            endline -= 1
-
-        # find next DEF before given line
-        while "LOLPIG_DEF(" not in file.lines[line]:
-            line -= 1
-            if line <= 0:
-                return None, None
-        txt = ""
-        for i in range(line, endline):
-            txt += file.lines[i] + "\n"
-
-        # scan first part of DEF for proper syntax
-        import re
-        match = None
-        for i in re.finditer(r"LOLPIG_DEF\([\s]*([A-Za-z0-9_\.@]*)[\w]*,", txt):
-            match = i
-            break
-        if not match or not match.groups():
-            return None, None
-
-        # see if this DEF actually belongs to the object
-        # by making sure that only whitespace follows after end of macro
-        docpos = match.span()[1]
-        endpos = len(txt)-1
-        num_brack = 1
-        for i in range(docpos, len(txt)):
-            if txt[i] == "(":
-                num_brack += 1
-            elif txt[i] == ")":
-                num_brack -= 1
-            if num_brack == 0:
-                endpos = i
-                break
-        from .renderer import is_whitespace
-        for i in range(endpos, len(txt)):
-            if not (is_whitespace(txt[i]) or txt[i] == ")"):
-                return None, None
-
-        py_name = match.groups()[0]
-        py_doc = txt[match.span()[1]:].strip()
-        while py_doc.endswith(")"):
-            py_doc = py_doc[:-1].strip()
-        while py_doc.startswith("("):
-            py_doc = py_doc[1:].strip()
-        from .renderer import change_text_indent
-        py_doc = change_text_indent(py_doc, 0)
-        return py_name, py_doc

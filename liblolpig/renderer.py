@@ -257,6 +257,7 @@ class Renderer:
     def __init__(self, context):
         if not context:
             raise ValueError("No context given to Renderer")
+        self.is_gccxml = False
         self.context = context
         self.namespaces = []
         self.default_inc = change_text_indent("""

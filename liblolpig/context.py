@@ -406,7 +406,7 @@ class Context:
         print("FUNCTIONS:")
         for f in self.functions:
             print("  " + f.get_namespace_prefix() + f.c_definition() + " " + str(f.get_function_type())
-                  + " (" + f.key() + ")")
+                  + " (" + f.key() + ") [" + f.py_doc + "]")
         print("CLASSES:")
         for c in self.classes:
             print("  " + c.get_namespace_prefix() + c.py_name + " -> ".join([""]+[x.py_name for x in c.bases])
