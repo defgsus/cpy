@@ -438,6 +438,8 @@ class DoxygenParser:
         o = XmlFunction()
         o.c_name = node.find("name").text
         self.push_stack("parsing function %s" % o.c_name)
+        o.c_name = node.find("definition").text
+        o.c_name = o.c_name.split()[-1]
         o.id = node.attrib["id"]
         o.return_type = self._get_type(node)
         o.py_name, o.py_doc = self._get_doc(node)
