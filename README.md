@@ -12,10 +12,14 @@ and generate the module code automatically. For example:
 ```C++
 // def.cpp
 
-LOLPIG_DEF(add,
-    Adds two numbers, returns float.
-    Multi-line doc-strings, yeah!
-)
+/** @addtogroup lolpig
+    @{ */
+
+/** @p add
+    Adds two numbers, returns float. \n
+    Multi-line doc-strings need a trailing \n
+    in doxygen!
+*/
 PyObject* func_add(PyObject* args)
 {
     double a, b;
@@ -23,6 +27,8 @@ PyObject* func_add(PyObject* args)
         return NULL;
     return PyFloat_FromDouble(a+b);
 }
+
+/** @} */
 ```
 
 Calling:
@@ -35,7 +41,7 @@ will create a `module.h` and `module.cpp` file containing all the necessary
 c-api tango. In C, you can then, say:
 
 ```c++
-#include "test_mod.h"
+#include "module.h"
 ...
 initialize_module_test_mod();
 Py_Main(argc, argv);
@@ -59,28 +65,40 @@ Defining a class and a more complete example looks like this:
 
 #include <python3.4/Python.h>
 
-#define LOLPIG_DEF(name, doc)
-
 extern "C" {
 
-LOLPIG_DEF(vec3, A vector class)
+/** @addtogroup lolpig 
+    @{ */
+
+/** @p vec3
+    A vector class */
 struct Vector3 {
     PyObject_HEAD
     double v[3];
 };
 
-// these functions are automatically defined in the generated module
+/** @} */
+
+// This must be implemented so that the C-API module knows about the size
+// of your struct. 
+size_t sizeof_Vector3() { return sizeof(Vector3); }
+
+// These helper functions are automatically defined in the generated module
 Vector3* new_Vector3();
 bool is_Vector3(PyObject*);
 
-LOLPIG_DEF(vec3.__init__, Initialize the vector)
+/** @ingroup lolpig
+    @p vec3.__init__
+    Initialize the vector */
 int vec3_init(PyObject* self, PyObject* args, PyObject* kwargs)
 {
     // do something meaningful..
 	return 0;
 }
 
-LOLPIG_DEF( vec3.copy, Makes a copy of the vector)
+/** @ingroup lolpig
+    @p vec3.copy
+    Makes a copy of the vector */
 PyObject* vec3_copy(PyObject* self)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -90,14 +108,18 @@ PyObject* vec3_copy(PyObject* self)
     return reinterpret_cast<PyObject*>(nvec);
 }
 
-LOLPIG_DEF( vec3.__getitem__, Returns a component)
+/** @ingroup lolpig
+    @p vec3.__getitem__
+    Returns a component */
 PyObject* vec3_getitem(PyObject* self, Py_ssize_t idx)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
     return PyFloat_FromDouble(vec->v[idx]);
 }
 
-LOLPIG_DEF( vec3.__setitem__, Sets a component)
+/** @ingroup lolpig
+    @p vec3.__setitem__
+    Sets a component */
 int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 {
     Vector3* vec = reinterpret_cast<Vector3*>(self);
@@ -108,19 +130,42 @@ int vec3_setitem(PyObject* self, Py_ssize_t idx, PyObject* val)
 } // extern "C"
 ```
 
-Every function and struct prefixed with the `LOLPIG_DEF` macro will be 
+Every function and struct put into the `lolpig` group will be 
 considered part of the module. 
 
 Running *lolpig* on the above .cpp file creates a .h and .cpp file defining
 the c-api python module. All three files (your own and the two created ones)
 need to be compiled and that's just it :)
 
-*lolpig* verifies function signatures of known functions, e.g. **__getitem__**.
+*lolpig* verifies function signatures of known functions, e.g. **__getitem__**. 
+There are some peculiarities in the Python/C API. On deviations, *lolpig* will 
+stop compiling and print the expected function signature instead.
 
-*lolpig* currently uses **gcc-xml** to parse the C/C++ files. That means that
-C++11 features are not supported - unfortunately. Fixes are:
-- Hide all C++11 stuff via a **GCC_XML** macro. This macro is defined when
-*lolpig* analyzes your code
-- Switch to CastXML or directly to LLVM for c++11.. (not keen about this yet)
-- or look into Doxygen if it parses enough of the C/C++1x to replace gcc-xml  
+*lolpig* uses **doxygen** to parse the C/C++ code. You have to create
+a doxygen group named `lolpig` at some point in the code. See the documentation for
+[defgroup](http://www.stack.nl/~dimitri/doxygen/manual/commands.html#cmddefgroup),
+[addtogroup](http://www.stack.nl/~dimitri/doxygen/manual/commands.html#cmdaddtogroup)
+or 
+[ingroup](http://www.stack.nl/~dimitri/doxygen/manual/commands.html#cmdingroup).
+If a function or struct is in the `lolpig` group, it's comment **must** start with
+`@p python_name` or `\p python_name`. This name will define the name in the python
+module, as you probably have guessed. Some examples:
 
+```c++
+/** @addtogroup lolpig
+    @{ */
+
+/** @p global_func */
+PyObject* global_func() { Py_RETURN_NONE; }
+
+/** @p myclass.method */
+PyObject* myclass_method(PyObject* self) { Py_RETURN_NONE; }
+
+/** @p myclass.prop@get */
+PyObject* myclass_prop_getter(PyObject* self, void*) { Py_RETURN_NONE; }
+
+/** @p myclass.prop@set */
+int myclass_prop_setter(PyObject* self, PyObject* obj, void*) { return 0; }
+
+/** @} */    
+```
