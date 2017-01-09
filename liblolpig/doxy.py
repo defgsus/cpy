@@ -37,6 +37,7 @@ class XmlStruct(XmlContext):
     def as_class(self):
         from .context import Class
         c = Class()
+        c.id = self.id
         c.py_name = self.py_name
         c.py_doc = self.py_doc
         c.c_name = self.get_c_name()
@@ -71,6 +72,7 @@ class XmlFunction(XmlContext):
         from .context import Function, Argument
         f = Function()
         pyname = self.py_name.split("@")
+        f.id = self.id
         f.c_name = self.get_c_name()
         f.py_name = pyname[0]
         if len(pyname) > 1:
@@ -94,13 +96,8 @@ class DoxygenParser:
         self.filenames = []
         self.group_names = ["python", "lolpig"]
 
-        self.types = dict()
         self.structs = dict()
         self.functions = dict()
-        self.fields = dict()
-        self.namespaces = dict()
-        self.files = dict()
-        self.classes = dict()
 
         self.error_stack = []
         self.py_tag_open = "%LOLPIG{{{%"
@@ -121,21 +118,11 @@ class DoxygenParser:
 
     def parse_files(self, filenames):
         self._parse(filenames)
-        if not self.functions and not self.classes:
+        if not self.functions and not self.structs:
             self.error("No python-annotated classes or functions found")
-        #self._resolve_types()
-        #self._resolve_context(self.namespaces.values())
-        #self._resolve_context(self.functions.values())
-        #self._resolve_context(self.types.values())
-        #self._resolve_context(self.structs.values())
-        #self._resolve_context(self.fields.values())
-        #self._find_lolpig_def(self.functions.values())
-        #self._find_lolpig_def(self.structs.values())
-        #self.dump()
+        self._resolve_bases()
 
     def dump(self):
-        print("namespaces", self.namespaces)
-        print("types", self.types)
         print("structs", self.structs)
         print("functions", self.functions)
 
@@ -143,9 +130,11 @@ class DoxygenParser:
         from .context import Context
         c = Context()
         c.filenames = [self.filenames]
+        # global functions
         for func in self.functions.values():
             if func.py_name and not func.is_class_function():
                 c.functions.append(func.as_function())
+        # classes
         for struct in self.structs.values():
             if struct.py_name:
                 cls = struct.as_class()
@@ -153,36 +142,40 @@ class DoxygenParser:
                     if func.py_name and func.py_name.split(".")[0] == cls.py_name:
                         cls.methods.append(func.as_function())
                 c.classes.append(cls)
-        # resolve bases
+        # resolve class bases
+        self.push_stack("resolve bases")
         for xmlstruct in self.structs.values():
-            struct = c.get_object_by_c_name(xmlstruct.c_name)
-            if struct:
-                for b in xmlstruct.bases:
-                    base = c.get_object_by_c_name(b.c_name)
-                    if base:
-                        struct.bases.append(base)
+            struct = c.get_object_by_id(xmlstruct.id)
+            if not struct:
+                self.error("struct '%s' not found in Context" % xmlstruct.id)
+            for b in xmlstruct.bases:
+                base = c.get_object_by_id(b.id)
+                if not base:
+                    self.error("struct base '%s' not found for %s" % (b.id, struct))
+                struct.bases.append(base)
+        self.pop_stack()
         c.finalize()
         return c
 
     def has_object(self, id):
-        return id in self.types \
-            or id in self.structs \
-            or id in self.functions \
-            or id in self.namespaces \
-            or id in self.classes
+        return id in self.structs or id in self.functions
 
     def get_object(self, id, default = None):
-        if id in self.types:
-            return self.types[id]
         if id in self.structs:
             return self.structs[id]
         if id in self.functions:
             return self.functions[id]
-        if id in self.namespaces:
-            return self.namespaces[id]
-        if id in self.classes:
-            return self.classes[id]
         return default
+
+    def _resolve_bases(self):
+        self.push_stack("resolving base class references")
+        for c in self.structs.values():
+            if c.bases_id:
+                for id in c.bases_id:
+                    if not id in self.structs:
+                        self.error("Could not find base '%s' for %s" % (id, c))
+                    c.bases.append(self.structs.get(id))
+        self.pop_stack()
 
     def _parse(self, filenames):
         """Generate doxygen-xml and parse it"""
@@ -271,7 +264,7 @@ class DoxygenParser:
             try:
                 for root, dirs, files in os.walk(xml_dir):
                     for f in files:
-                        print(f)
+                        #print(f)
                         if f.startswith("group__") and f.endswith(".xml"):
                             group_name = f[7:f.index(".xml")]
                             if group_name in self.group_names:
@@ -414,8 +407,10 @@ class DoxygenParser:
             nnode = i.find("declname")
             o.arguments.append((self._get_type(i), nnode.text if nnode is not None else ""))
         self.pop_stack()
-        self.pop_stack()
+        if self.has_object(o.id):
+            self.error("Duplicate function id '%s'" % o.id)
         self.functions.setdefault(o.id, o)
+        self.pop_stack()
 
     def _parse_innerclass(self, node):
         self.push_stack("parse <innerclass>")
@@ -431,6 +426,13 @@ class DoxygenParser:
         self.push_stack("parsing struct %s" % o.c_name)
         o.py_name, o.py_doc = self._get_doc(node)
         o.location = self._get_location(node)
-        self.pop_stack()
+        bnode = node.find("basecompoundref")
+        if bnode is not None:
+            if not "refid" in bnode.attrib:
+                self.error("Could not find 'refid' in %s" % bnode)
+            o.bases_id.append(bnode.get("refid"))
+        if self.has_object(o.id):
+            self.error("Duplicate struct id '%s'" % o.id)
         self.structs.setdefault(o.id, o)
+        self.pop_stack()
 

@@ -5,7 +5,7 @@ from .gccxml import ParseError
 class Namespaced:
     def __init__(self):
         self.namespaces = []
-        self.mangled = None
+        self.id = None
 
     def has_namespace(self):
         return len(self.namespaces) > 1 or (len(self.namespaces) == 1 and not self.namespaces == ["::"])
@@ -19,8 +19,8 @@ class Namespaced:
 
     def key(self):
         """unique C identifier"""
-        if self.mangled:
-            return self.mangled
+        if self.id:
+            return self.id
         k = self.get_namespace_prefix()
         if hasattr(self, "c_name"):
             k += self.c_name
@@ -448,6 +448,12 @@ class Context:
                 i += 1
             srt.insert(i, c)
         self.classes = srt
+
+    def get_object_by_id(self, id):
+        for i in self.functions + self.classes:
+            if i.id == id:
+                return i
+        return None
 
     def get_object_by_c_name(self, c_name):
         for i in self.functions + self.classes:
